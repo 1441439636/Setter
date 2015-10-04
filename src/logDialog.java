@@ -26,26 +26,26 @@ SwingUtilities.updateComponentTreeUI(this);
 		
 		JPanel panel=new JPanel();
 		panel.setLayout(new FlowLayout());
-		// 登录界面布局使用FlowLayout 设置大小就自动挤压成一行一行的
-		panel.add(new JLabel("账号:    "));
+		// 鐧诲綍鐣岄潰甯冨眬浣跨敤FlowLayout 璁剧疆澶у皬灏辫嚜鍔ㄦ尋鍘嬫垚涓�琛屼竴琛岀殑
+		panel.add(new JLabel("璐﹀彿:    "));
 		
 		username = new JTextField("scott");
 		username.setPreferredSize(new Dimension(120, 20));
 		panel.add(username);
 				
-		panel.add(new JLabel("密码:    "));
+		panel.add(new JLabel("瀵嗙爜:    "));
 		
 		password = new JPasswordField("tiger");
 		password.setPreferredSize(new Dimension(120, 20));
 		panel.add(password);
 		
-		panel.add(new JLabel("地址:    "));
+		panel.add(new JLabel("鍦板潃:    "));
 		
 		address = new JTextField("127.0.0.1:1521");
 		address.setPreferredSize(new Dimension(120, 20));
 		panel.add(address);
 		
-		panel.add(new JLabel("数据库名:"));
+		panel.add(new JLabel("鏁版嵁搴撳悕:"));
 		
 		databasename = new JTextField("orcl");
 		databasename.setPreferredSize(new Dimension(120, 20));
@@ -54,7 +54,7 @@ SwingUtilities.updateComponentTreeUI(this);
 	
 		add(panel,BorderLayout.CENTER);
 		
-		confirm=new JButton("确定");
+		confirm=new JButton("纭畾");
 		confirm.addActionListener(new ActionListener() {
 			
 			public void actionPerformed(ActionEvent arg0) {
@@ -62,7 +62,7 @@ SwingUtilities.updateComponentTreeUI(this);
 				dialog.setVisible(false);
 			}
 		});
-		cancle=new JButton("取消");
+		cancle=new JButton("鍙栨秷");
 		cancle.addActionListener(new ActionListener() {
 			
 			public void actionPerformed(ActionEvent arg0) {

@@ -1,66 +1,81 @@
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Properties;
 
-//ÎªÊı¾İ¿â²Ù×÷Ìá¹©·½·¨
-//³õÊ¼»¯Ê±Á¬½ÓÊı¾İ¿â  url password user ÏÈĞ´ËÀ
-//³õÊ¼»¯con
-//·şÎñÆ÷
+/*
+ * ä½¿ç”¨connect åˆå§‹åŒ–  connect å› ä¸ºæœ‰å¯èƒ½æ•°æ®åº“ç™»å½•è¿æ¥å¤±è´¥
+ * 
+ * 
+ */
+
 public class DatabaseConnect {
 	
-	Connection con = null;// ´´½¨Ò»¸öÊı¾İ¿âÁ¬½Ó
-    PreparedStatement pre = null;// ´´½¨Ô¤±àÒëÓï¾ä¶ÔÏó£¬Ò»°ã¶¼ÊÇÓÃÕâ¸ö¶ø²»ÓÃStatement
-    ResultSet result = null;// ´´½¨Ò»¸ö½á¹û¼¯¶ÔÏó
-    
-    
+	Connection con = null;
+    PreparedStatement pre = null;
+    ResultSet result = null;
+    //å…¨å±€å˜é‡ä»¥ä¾¿ä½¿ç”¨
     public Boolean connect(String user,String password,String address,String databasename){    	
     	try {
-    		Class.forName("oracle.jdbc.driver.OracleDriver");// ¼ÓÔØOracleÇı¶¯³ÌĞò
-    	    String url = "jdbc:oracle:" + "thin:@"+address+"/"+databasename;// 127.0.0.1ÊÇ±¾»úµØÖ·£¬ orclÊÇÄãµÄÊı¾İ¿âÃû        
-
+    		Class.forName("oracle.jdbc.driver.OracleDriver");// åŠ è½½Oracleé©±åŠ¨ç¨‹åº
+    	    String url = "jdbc:oracle:" + "thin:@"+address+"/"+databasename;// ç”Ÿæˆè¿æ¥å­—ç¬¦ä¸²ç”¨æ¥è¿æ¥æ•°æ®åº“      
+    	    
     	    Properties common = new Properties();
     	    common.put("user", user);
     	    common.put("password",password);
-
 			con=DriverManager.getConnection(url, common);
-		
-			//Ã»ÓĞ±í È«²¿É¾µô ÔÙÖØ½¨
-			if(!con.prepareStatement("select table_name from user_tables where table_name='TABLENAME'").executeQuery().next())
-	    	{
-				try{			
-				dropTable(new String[]{"role","tablename","colname","account"});
-	    		createTablenameTable();
-	        	createColnameTable();
-	        	createAccountTable();
-	        	createRoleTable();
-				}
-				catch(Exception e)
-				{
-					//don't care;
-				}
-	    	}
+			//åˆå§‹åŒ–Connection properties 
+				
+			if(!hasAllUserTables())
+			{
+				System.out.println("no");
+				dropAllUserTables();
+				createAlluserTables();
+			}
+			//ä¿æŒç”¨æˆ·è¡¨çš„å®Œæ•´
+			//æœ‰äº›ç¹ç éœ€è¦è€ƒè™‘æ•°æ®åº“è¢«æ¶æ„æ“åš? å£®å“‰æˆ‘å¤§é²æ£’æ€§
 		} catch (Exception e) {
 			return false;
 		}
     	return true;
     }
+	private void dropAllUserTables() 
+	{	
+		for(int i=0;i<usertablename.length;i++)
+		{
+			try{
+			pre=con.prepareStatement("drop table "+usertablename[i]);
+	  		pre.executeQuery();}
+			catch(Exception e){};
+		}
+	}
     
-    
-    private void dropTable(String[] s) throws SQLException
-    {
-    	String sql="drop table ";
-    	for(int i=0;i<s.length;i++)
-    	{
-    		pre=con.prepareStatement(sql+"'"+s[i]+"'");
-    		pre.executeQuery();
-    		if(pre!=null)pre.close();
-    	}
-    }
-    
-  	  //¹Ø±ÕÊı¾İ¿âµÄÁ¬½Ó
+    private void createAlluserTables() throws SQLException {
+  		Statement stmt = con.createStatement(); 
+  		for(int i=0;i<createUserTableSql.length;i++)
+  		{
+  			stmt.addBatch(createUserTableSql[i]);
+  		}
+  		stmt.executeBatch();
+  		stmt.close();
+	}
+
+  	private boolean hasAllUserTables() {
+		try {
+			result=con.prepareStatement(hasAllUserTables).executeQuery();
+			if(result.next()&&result.getInt(1)==7)return true;
+			return false;
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
+  	
   	public void close(){
   		try{  
   			if (result != null)
@@ -69,256 +84,251 @@ public class DatabaseConnect {
   				pre.close();
   			if (con != null)
   				con.close();
-  	   System.out.println("Êı¾İ¿âÁ¬½ÓÒÑ¹Ø±Õ£¡");
+  	   System.out.println("æ•°æ®åº“è¿æ¥å·²å…³é—­ï¼");
   		}
   	  catch (Exception e)
 	    {
-	    	System.out.println("Êı¾İ¿â¹Ø±ÕÒì³£");
+	    	System.out.println("æ•°æ®åº“å…³é—­å¼‚å¸¸");
 	        e.printStackTrace();
 	    }
   	}
 	
-  	public Vector<String> getTableNameList() throws Exception
-  	{  		
-    	result= con.prepareStatement(getTableNameSql).executeQuery();
-    	Vector<String>v=new Vector<String>();
-    	while(result.next())
-    	{
-    		v.add(result.getString(1));
-    	}
-    	return v;
+  	public ArrayList<String> getUnadornTableNameList()
+  	{  	
+  		ArrayList<String>tablename=new ArrayList<String>();
+    	try {
+			result=con.prepareStatement(getUnadornedTableNameListSql).executeQuery();
+		
+	    	while(result.next())
+	    	{
+	    		tablename.add(result.getString(1));
+	    	}
+	    	return tablename;
+    	} 
+    	
+    	catch (SQLException e) {		
+			e.printStackTrace();
+			return tablename;
+		}
  	}
+	public ArrayList<String> getColumnList(String tablename) {
+		ArrayList<String>list=new ArrayList<String>();
+		try {
+			pre=con.prepareStatement(getUnadornedColumnListSql);
+			pre.setString(1, tablename);
+			result=pre.executeQuery();
+			while(result.next())
+			{
+				list.add(result.getString(1));
+			}
+			return list;
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return list;
+		}
+	}
+	
+	
+	//æ›´æ–°è¡¨å é¦–å…ˆçœ‹åœ¨tablenameä¸­æ˜¯å¦å­˜åœ¨ ä¸å­˜åœ¨æ’å…¥ å­˜åœ¨æ›´æ–°
+  	//æœ‰æ—¶å€™ç›´æ¥å†™sqlè¯­å¥æ„Ÿè§‰æ›´æ–¹ä¾¿ç‚¹
+	
+	private boolean hasTable(String name) throws SQLException
+	{
+		pre=con.prepareStatement(isEixtTableName);
+  		pre.setString(1, name);
+		result=pre.executeQuery();
+  		return result.next()&&result.getInt(1)==1;
+	}
 
-  	public ResultSet getRecord(String tableName) throws Exception
-  	{  		
-  		pre=con.prepareStatement(getRecordSql);
-  		pre.setString(1, tableName);
-    	return pre.executeQuery();
- 	}
-  	public String getChineseTableName(String tabName) throws SQLException
+	private boolean hasColumn(int table_id,int column_id) throws SQLException
+	{
+		pre=con.prepareStatement(isEixtColumnName);
+  		pre.setInt(1, table_id);
+  		pre.setInt(2, column_id);
+		result=pre.executeQuery();
+		return result.next()&&result.getInt(1)==1;
+	}
+	public void updateTableName(String name,String chinese) throws SQLException
   	{
-  		String str="";
-  		pre=con.prepareStatement(getTableNameChineseSql+"'"+tabName+"'");
-  		 		
-  		ResultSet rs=pre.executeQuery();
-  		if(rs.next())
+	
+  		boolean haschiese=!chinese.equals("");
+  		boolean isExit=hasTable(name);
+  		
+  		if(isExit&&haschiese)//å­˜åœ¨  ä¸­æ–‡åä¸ä¸ºç©º ç›´æ¥æ›´æ–° è®¾ç½®ä¸ºç¿»è¯‘
   		{
-  			str=rs.getString(1);
+  			pre=con.prepareStatement(updateTableName);
+  			pre.setString(1, chinese);
+  			pre.setString(2, name);
+  			pre.executeQuery(); 			
   		}
-		if(pre!=null)pre.close();
+  		else if(isExit&&!haschiese)//å­˜åœ¨ ä¸­æ–‡åä¸ºç©º ä¸åŠ¨
+  		{
+  			
+  		}
+  		else if(!isExit&&haschiese)//ä¸å­˜åœ¨ ä¸­æ–‡åä¸ä¸ºç©º  ç›´æ¥æ’å…¥
+  		{
+  			pre=con.prepareStatement(insertTableName);
+  			pre.setString(1,name);
+  			pre.executeQuery();
+  			pre=con.prepareStatement(updateTableName);
+  			pre.setString(1, chinese);
+  			pre.setString(2, name);
+  			pre.executeQuery(); 			
+  		}
+  		else//ä¸å­˜åœ¨ ä¸­æ–‡åä¸ºç©º æ’å…¥ è®¾ç½®ä¸ºæœªç¿»è¯‘
+  		{
+  			pre=con.prepareStatement(insertTableName);
+  			pre.setString(1,name);
+  			pre.executeQuery();
+  		}	
+  	}		
+
+	public String getAdornTableName(String onselecttable) {
+  		String str="";
+  		try {
+	  		pre=con.prepareStatement(getAdornTableName);
+			pre.setString(1, onselecttable);
+			pre.executeQuery();
+	  		result=pre.executeQuery();
+			if(result.next())
+	  		{	
+				str=result.getString(1);
+	  		}
+  		} catch (SQLException e) {
+			e.printStackTrace();
+			return str;
+  		}		
   		return str;
-  
-  	}
-  	
-  	public void updateTableName(String name,String chinese) throws SQLException
-  	{
-  		pre=con.prepareStatement(updateTableName);
-  		pre.setString(1, chinese);
-  		pre.setString(2, name);
-  		pre.executeQuery();
-		if(pre!=null)pre.close();
-  	}
-  	
-  	public void updateColName(String chinese,boolean flag,String no,String tablename) throws SQLException
-  	{
-  		String fla="N";
-  		if(flag)fla="Y";
-  		int n=no.length()==0?0:Integer.parseInt(no);
-  		pre=con.prepareStatement(updateColName);
-  		pre.setString(1, chinese);
-  		pre.setString(2, fla);
-  		pre.setInt(3,n);
-  		pre.setString(4, tablename);
-  		pre.executeQuery();
-		if(pre!=null)pre.close();
-  	}
+	}
 
+
+	/*
+	 * æ›´æ–°columnname åˆ°åº•æ˜¯ä½¿ç”¨column_id è¿˜æ˜¯ç›´æ¥ç”¨åˆ—å é€‰æ‹©äº†ç”¨id åˆ—åè™½ç„¶ä¸å¤šä½† æ¯•ç«Ÿæœ‰ä¸‰å¼ è¡¨ä½¿ç”¨ 
+	 * 
+	 * 
+	 */
+	//æ ¹æ®è¡¨ååˆ—åæ’å…¥tableid columnid datatype
+	private void insertColname(String tablename,String columnname) throws SQLException
+	{
+		pre=con.prepareStatement(insertColName);
+		pre.setString(1, tablename);
+		pre.setString(2, columnname);
+		pre.executeQuery();
+	}
+	private void updateColname(int table_id,int column_id,String flag,String chinese, int xh) throws SQLException
+	{
+		pre=con.prepareStatement(updateColName);
+	//	columnname set adorn_name= ?, flag = ? , no= ? where table_id = ? and column_id=?
+		pre.setString(1, chinese);
+		pre.setString(2,flag);		
+		pre.setInt(3,xh);
+		pre.setInt(4,table_id );
+		pre.setInt(5,column_id );
+		pre.executeQuery();
+	}
+	
+	public void setColname(String tablename, String colName, String flag,
+		String chinese, int xh) throws SQLException {
+		int table_id=0;
+		int column_id=0;
+		System.out.println(tablename+"  "+colName+" "+flag+" "+chinese+" "+xh);
+		pre=con.prepareStatement(getTable_idColumn_id);
+		pre.setString(1, tablename);
+		pre.setString(2, colName);
+		result=pre.executeQuery();
+		if(result.next())
+		{
+			table_id=result.getInt(1);
+			column_id=result.getInt(2);	
+		System.out.println(table_id+"  "+column_id);
+		}
+		else return;
+
+		boolean isExit=hasColumn(table_id,column_id);
+		if(isExit)
+		{
+			updateColname(table_id,column_id,flag,chinese,xh);
+		}
+		else 
+		{
+			insertColname(tablename,colName);
+			updateColname(table_id,column_id,flag,chinese,xh);
+		}
+		
+	}
+
+	
+  	public ArrayList<String> getRecord(String tableName, String colname)
+  	{  		
+  		ArrayList<String>set=new ArrayList<String>();
+  		try {
+			pre=con.prepareStatement(getRecordSql);
+			pre.setString(1, tableName);
+			pre.setString(2, colname);
+			result=pre.executeQuery();
+			if(result.next())
+			{
+				set.add(result.getString(1));
+				set.add(result.getString(2));
+				set.add(result.getString(3));
+			}	
+		} 
+  		catch (SQLException e) {
+			e.printStackTrace();
+			return set;
+  		} 	
+  		return set;
+ 	}
+	
+	
+    public static void main(String[] args) throws SQLException {
+    	DatabaseConnect db=new DatabaseConnect();
+    	if(db.connect("scott", "tiger", "localhost", "orcl"))System.out.println("db connect");
+    	System.out.println(db.hasColumn(74571, 1));
+    	
+    	System.out.println("over");
+	}
    
-    public void createTablenameTable() throws SQLException
-    {
-    	pre=con.prepareStatement(creatTableNameSql);
-    	pre.executeQuery();
-    	pre=con.prepareStatement(insertTableNameSql);
-    	pre.executeQuery();		
-    	if(pre!=null)pre.close();
-    	
-    }
+	private static final String[] usertablename={"ROLE","ACCOUNT","ROLEACCOUNT","ROLEPERMISSION","TABLENAME","COLUMNNAME","QUERYCONDITION"};
 
-    public void createColnameTable() throws SQLException
-    {
-    	con.prepareStatement(creatColNameTableSql).executeQuery();
-    	con.prepareStatement(insertColNameTableSql).executeQuery();
-    }
-    
-    public void createRoleTable() throws SQLException
-    {
-    	con.prepareStatement(creatRoleTableSql).executeQuery();
-    	
-    }
-    public void createAccountTable() throws SQLException
-    {
-    	con.prepareStatement(creatAccountSql).executeQuery();
-    }
+	private static final String hasAllUserTables="select count(*) from user_objects where object_name in ('ROLE','ACCOUNT','ROLEACCOUNT','ROLEPERMISSION','TABLENAME','COLUMNNAME','QUERYCONDITION')";
 
-    public void addRole(String rolename,Vector<String>v) throws SQLException
-    {
-    	pre=con.prepareStatement(insertintoRoleTableSql);
-    	for(int i=0;i<v.size();i++)
-    	{
-      		pre.setString(1, rolename);
-      		pre.setString(2, v.get(i));
-      		pre.executeQuery();
-    	}
-		if(pre!=null)pre.close();
-    }
-    
-    public void addaccount(String rolename,String name,String password) throws SQLException
-    {
-    	//²¹¶¡ Òª¸Ä
-    	pre=con.prepareStatement("select role_name_id from role where role_name="+"'"+rolename+"'"); 	
-    	result=pre.executeQuery();
-    	String role_name_id = "1";
-    	if(result.next())
-    	{
-    		role_name_id=result.getString(1);
-    	
-    	pre=con.prepareStatement(insertintoAccountTableSql); 	
-      	pre.setString(1, role_name_id);
-      	pre.setString(2,name);
-      	pre.setString(3,password);
-      	pre.executeQuery();
-		if(pre!=null)pre.close();
-    	}
-    }
-	public Vector<String> getRole() throws SQLException {
-		Vector<String> v=new Vector<String>();
-		result=con.prepareStatement(getRoleListSql).executeQuery();
-		while(result.next())
-		{
-			v.add(result.getString(1));
-		}
-		return v;
-	}
-	public Vector<String> getRolePermission(String rolename) throws SQLException {
-		Vector<String> v=new Vector<String>();
-		pre=con.prepareStatement(getRolePermissionSql); 	
-      	pre.setString(1, rolename);      
-		result=pre.executeQuery();		
-		while(result.next())
-		{
-			v.add(result.getString(1));
-		}
-		if(pre!=null)pre.close();
-		return v;
-	}
-	public void insertRole(String s) throws SQLException {
-		pre=con.prepareStatement(insertintoRoleTableSql);
-		pre.setString(1, s);
-		pre.executeQuery();
-		if(pre!=null)pre.close();
-	}
-
-
-	public void insertRolepermission(String s, String name) throws SQLException {
-		
-		pre=con.prepareStatement(insertintoRolePermissionTableSql);
-		pre.setString(1, s);
-		pre.setString(2, name);
-		pre.executeQuery();
-		if(pre!=null)pre.close();
-	}
-
-
-	public void deleteRole(String role) throws SQLException {
-		//ÎÒ¼ÇµÃ¿ÉÒÔÉèÖÃÖ÷¼üÔ¼Êø »¹ÊÇÆäËûµÄÊ²Ã´  ÕâÑùÉ¾³ıÖ»ÒªÉ¾Ò»¸ö¾ÍºÃÁË 
-
-		deleteRolePermission(role);
-		
-		pre=con.prepareStatement(dropRoleAccountSql);
-		pre.setString(1, role);
-		pre.setString(2, role);
-		pre.executeQuery();
-		pre=con.prepareStatement(dropRoleSql);
-		pre.setString(1, role);
-		pre.executeQuery();	
-		if(pre!=null)pre.close();
-	}
-	public void deleteRolePermission(String role) throws SQLException {
-		pre=con.prepareStatement(dropRolePermissionSql);
-		pre.setString(1, role);
-		pre.setString(2, role);
-		pre.executeQuery();
-		if(pre!=null)pre.close();
-	}
-    
-	private final static String getTableNameSql="select name from tablename";
+	private static final String[] createUserTableSql={
+			"create table role(role_id number primary key,role_name varchar2(30) not null unique)",
+			"create table account(account_id number  primary key,name varchar2(30) not null UNIQUE,password varchar2(30) not null)",
+			"create table roleaccount(account_id number primary key,role_id number not null)",
+			"create table rolepermission(role_id number primary key,table_id number not null,column_id number not null)",
+			"create table tablename(table_id number primary key,adorn_name varchar(30),table_name varchar(30),flag char(1) default 'N')",
+			"create table columnname(table_id number not null,column_id number not null,datatype varchar(106),adorn_name varchar(30),flag char(1) default 'N',no number default 1)",
+			"create table querycondition(account_id number primary key,table_id number not null,column_id number not null,con1 varchar(30),con2 varchar(30),setname varchar(30) not null)",
+			"alter table columnname  add constraint FK_COLUMN_TABNAME_TABID foreign key (TABLE_ID)  references TABLENAME (TABLE_ID) onã€€deleteã€€cascade"	
+			};
 	
-	private final static String getTableNameChineseSql="select chinese from tablename where name=";
+	private final static String getUnadornedTableNameListSql="select object_name from user_objects where object_type in ('TABLE','VIEW') and object_name not in ('ROLE','ACCOUNT','ROLEACCOUNT','ROLEPERMISSION','TABLENAME','COLUMNNAME','QUERYCONDITION') order by object_name";
 
-	private final static String creatTableNameSql=	"create table tablename (name varchar(30),id number ,chinese varchar(20) default '',flag char(1) default 'N')";
-	private final static String insertTableNameSql="insert into tablename(name,id) "
-			+"Select OBJECT_NAME,OBJECT_ID  from user_objects WHERE OBJECT_TYPE IN ('TABLE','VIEW') "
-			+"AND not OBJECT_NAME  in ('TABLENAME','COLNAME','QUERYCONDITION')";
+	private final static String getUnadornedColumnListSql="select column_name from user_tab_cols where table_name=?";
 	
-	private final static String creatRoleTableSql="create table role(rol_name varchar(20),role_name_id number)";
-	private final static String insertintoRoleTableSql="insert into role values(?,autoadd.nextval)";
-	private final static String dropRoleSql="delete from role where role_name=?";
+	private final static String isEixtTableName="select count(*) from tablename where table_name =?";
 	
-	private final static String creatRolePermissionTableSql="create table rolepermission(role_name_id number,table_name_id)";
-	private final static String insertintoRolePermissionTableSql="insert into rolepermission(role_name_id,table_name_id) "
-			+ "select role.role_name_id,tablename.id "
-			+"from role,tablename "
-			+"where role.role_name=? and tablename.name=?";
-	private final static String dropRolePermissionSql=
-			"declare "
-			+"i integer; "
-			+"begin "
-			+"select count(*) into i from role where role_name=?; "
-			+"if i > 0 then "
-			+"delete from rolepermission where rolepermission.role_name_id in (select role_name_id from role where role.role_name=?); "
-			+"end if; "
-			+"end;";
-		
-	private final static String creatAccountSql="create table account(role_name_id number,account varchar(20),password varchar(20))";
-	private final static String insertintoAccountTableSql="insert into account (role_name_id,account,password)values(?,?,?)";;
-	private final static String creatColNameTableSql="create table colname(col_name varchar(20),table_name varchar(20),chinese varchar(20) default '',type varchar(20),flag char(1) default 'N',no INTEGER default 0 )";
-	private final static String insertColNameTableSql="insert into colname(col_name,table_name,type) "
-			+"select t.COLUMN_NAME,t.TABLE_NAME,t.DATA_TYPE "
-			+"from user_tab_columns t,user_col_comments c  "
-			+"where t.table_name = c.table_name and t.column_name = c.column_name and not t.TABLE_NAME  in ('TABLENAME','COLNAME','QUERYCONDITION')";
-	private final static String updateColName="update colname set chinese= ?, flag = ? , no= ? where col_name = ?";
-	private final static String updateTableName="update tablename set chinese= ? where name= ?";
-	private final static String getRecordSql="select flag,col_name,chinese,no from colname where table_name = ?";
-	private final static String getRoleListSql="select role_name from role";
+	private final static String insertTableName="insert into tablename(table_id,table_name) select object_id,object_name from user_objects where object_name=?";
 	
-	private final static String getRolePermissionSql="select tablename.chinese from tablename where id in "
-				+"(select ROLEPERMISSION.TABLE_NAME_ID from ROLEPERMISSION where ROLEPERMISSION.Role_Name_Id in"
-				+"(select role.role_name_id from role where role.rol_name=?))";
-		
-	private final static String createAutoAddSql="create sequence autoadd start with 1 in crement by 1";
-	private final static String DeleteAutoAddSql="drop sequence autoadd";
-    private static 	String createqueryconditionSql="create table querycondition (tablename varchar(20),colname varchar(20),focus char(1),con1 varchar(25),con2 varchar(25),setname varchar(20))";
+	private final static String updateTableName="update tablename set adorn_name= ?,flag='Y' where table_name= ?";
 
-
-    private static 	String dropRoleAccountSql=	
-    		"declare "
-			+"i integer; "
-			+"begin "
-			+"select count(*) into i from role where role_name=?; "
-			+"if i > 0 then "
-			+"delete from account where account.role_name_id in (select role_name_id from role where role.role_name=?); "
-			+"end if; "
-			+"end;";
+	private final static String getAdornTableName="select adorn_name from tablename where table_name=?";
 	
+	private final static String getTable_idColumn_id="select o.OBJECT_ID,t.COLUMN_ID  from user_objects o,user_tab_cols t where o.OBJECT_NAME=? and t.COLUMN_NAME=? and o.OBJECT_NAME=t.TABLE_NAME";
+	
+	private final static String isEixtColumnName="select count(*)  from columnname c where  c.table_id=? and c.column_id=?";
+	
+	private final static String updateColName="update columnname set adorn_name= ?, flag = ? , no= ? where table_id = ? and column_id=?";
+	
+	private final static String insertColName=
+			"insert into columnname(table_id,column_id,datatype)"
+			+" select o.OBJECT_ID,t.COLUMN_ID,t.DATA_TYPE  from user_objects o,user_tab_cols t "
+			+"where o.OBJECT_NAME=? and t.COLUMN_NAME=? and o.OBJECT_NAME=t.TABLE_NAME";
 
 
-
-
-
-
-
-
-
+	private final static String getRecordSql="select c.flag,c.adorn_name,c.no from columnname c,user_objects o,user_tab_cols t where o.OBJECT_NAME=? and t.TABLE_NAME=o.OBJECT_NAME and t.COLUMN_NAME=? and c.table_id =o.OBJECT_ID and c.COLUMN_ID=t.COLUMN_ID";
 
 
 }

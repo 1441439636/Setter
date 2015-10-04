@@ -10,6 +10,7 @@ class record extends JPanel{
 	
 	private static final long serialVersionUID = 1L;
 
+
 	public record(String Flag,String colName,String chinese,int no){
 		setLayout(new FlowLayout(FlowLayout.LEFT,10,10));
 		this.setMaximumSize(new Dimension(450, 35));
@@ -30,23 +31,32 @@ class record extends JPanel{
 		xh.setText(no+"");
 		add(jck);
 		add(bn);
-		add(new JLabel("ÖÐÎÄÃû"));
+		add(new JLabel("ç¿»è¯‘"));
 		add(zwm);
 		add(xh);
+	}
+	public record(String colName)
+	{
+		this("N",colName,"",0);
 	}
 	public String getChinese(){
 		return zwm.getText();
 	}
-	public boolean getFlag(){
-		return jck.isSelected();
+	public String getFlag(){
+		return jck.isSelected()?"Y":"N";
 	}
-	public String getxh(){
-		return xh.getText();
+	public int getxh(){
+		return Integer.parseInt(xh.getText());
 	}
 	public String getColName(){
 		return bn.getText();
 	}
-
+	public void reset( String flag, String chinese, String xh) {
+		boolean f=flag=="Y"?true:false;
+		jck.setSelected(f);
+		zwm.setText(chinese);
+		this.xh.setText(xh);
+	}
 	public void clear()
 	{
 		jck.setSelected(false);
@@ -57,6 +67,9 @@ class record extends JPanel{
 	JTextField xh;
 	JCheckBox jck;
 	JLabel bn;
+
+
+
 }
 
 
