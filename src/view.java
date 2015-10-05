@@ -80,6 +80,31 @@ public class view extends JFrame {
 		rootPanel.addTab("账号设置", null,new accountPanel(db));
 		add(rootPanel);
 		
+		
+		
+		
+		
+		rootPanel.addChangeListener(new ChangeListener() {
+			
+			public void stateChanged(ChangeEvent e) {
+				JTabbedPane root=(JTabbedPane)e.getSource();
+				Component com=root.getSelectedComponent();
+				int i=root.getSelectedIndex();
+				switch(i)
+				{
+					case 0:
+						tranlatePanel tn=(tranlatePanel)com;				
+						break;
+					case 1:
+						permissionPanel pe=(permissionPanel)com;
+						pe.refresh();
+						break;		
+					case 2:
+						accountPanel ac =(accountPanel)com;			
+						break;
+				}
+			}
+		});
 	}
 	private final void setFeel() {
 		try {

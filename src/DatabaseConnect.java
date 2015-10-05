@@ -15,9 +15,9 @@ import java.util.Properties;
 
 public class DatabaseConnect {
 	
-	Connection con = null;
-    PreparedStatement pre = null;
-    ResultSet result = null;
+	private Connection con = null;
+	private PreparedStatement pre = null;
+	private ResultSet result = null;
     //全局变量以便使用
     public Boolean connect(String user,String password,String address,String databasename){    	
     	try {
@@ -32,7 +32,6 @@ public class DatabaseConnect {
 				
 			if(!hasAllUserTables())
 			{
-				System.out.println("no");
 				dropAllUserTables();
 				createAlluserTables();
 			}
@@ -148,39 +147,32 @@ public class DatabaseConnect {
 		result=pre.executeQuery();
 		return result.next()&&result.getInt(1)==1;
 	}
-	public void updateTableName(String name,String chinese) throws SQLException
+	public void setTableName(String name,String chinese) throws SQLException
   	{
 	
-  		boolean haschiese=!chinese.equals("");
+  		String haschiese=chinese.equals("")?"N":"Y";
   		boolean isExit=hasTable(name);
   		
-  		if(isExit&&haschiese)//存在  中文名不为空 直接更新 设置为翻译
+  		if(isExit)
   		{
   			pre=con.prepareStatement(updateTableName);
   			pre.setString(1, chinese);
-  			pre.setString(2, name);
-  			pre.executeQuery(); 			
+  			pre.setString(2,haschiese );
+  			pre.setString(3, name);
+  			pre.executeQuery(); 		
   		}
-  		else if(isExit&&!haschiese)//存在 中文名为空 不动
+  		else
   		{
+  			pre=con.prepareStatement(insertTableName);
+  			pre.setString(1,name);
+  			pre.executeQuery();
+  			pre=con.prepareStatement(updateTableName);
+  			pre.setString(1, chinese);
+  			pre.setString(2,haschiese );
+  			pre.setString(3, name);
+  			pre.executeQuery(); 
   			
-  		}
-  		else if(!isExit&&haschiese)//不存在 中文名不为空  直接插入
-  		{
-  			pre=con.prepareStatement(insertTableName);
-  			pre.setString(1,name);
-  			pre.executeQuery();
-  			pre=con.prepareStatement(updateTableName);
-  			pre.setString(1, chinese);
-  			pre.setString(2, name);
-  			pre.executeQuery(); 			
-  		}
-  		else//不存在 中文名为空 插入 设置为未翻译
-  		{
-  			pre=con.prepareStatement(insertTableName);
-  			pre.setString(1,name);
-  			pre.executeQuery();
-  		}	
+  		}  		
   	}		
 
 	public String getAdornTableName(String onselecttable) {
@@ -256,7 +248,6 @@ public class DatabaseConnect {
 		}
 		
 	}
-
 	
   	public ArrayList<String> getRecord(String tableName, String colname)
   	{  		
@@ -280,12 +271,141 @@ public class DatabaseConnect {
   		return set;
  	}
 	
+	public ArrayList<String> getAdornTablenameList() {
+		ArrayList<String>list=new ArrayList<String>();
+		try {
+			pre=con.prepareStatement(getAdornTablenameList);
+			result=pre.executeQuery();
+			while(result.next())
+			{
+				list.add(result.getString(1));
+			}
+			return list;
+		} 
+		catch (SQLException e) {
+			e.printStackTrace();
+			return list;
+		}
+	}
+  
+	//TODO 注意到有一些方法的结构类似 ->使用sql 传出一维的list 是否可以将其抽象为一个方法
+	//TODO 注意当用plsql 直接插入一个角色是 在这里是读不了的 只有关了plsql? 才可以
+	public ArrayList<String> getRoleList() {
+		ArrayList<String>list=new ArrayList<String>();
+		try {
+			pre=con.prepareStatement(getRoleList);
+			result=pre.executeQuery();
+			while(result.next())
+			{
+				list.add(result.getString(1));
+			}
+			return list;
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return list;
+		}
+	}
+	
+	public void addRole(String rolename) {	
+		try {
+			pre=con.prepareStatement(addRole);
+			pre.setString(1, rolename);
+			pre.executeQuery();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void deleteRole(String rolename)
+	{
+		try {
+			pre=con.prepareStatement(deleteRole);
+			pre.setString(1, rolename);
+			pre.executeQuery();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public ArrayList<String> getAdornColumnList(String tablename) {
+		ArrayList<String>list=new ArrayList<String>();
+		try {
+			pre=con.prepareStatement(getAdornColumnList);
+			pre.setString(1, tablename);
+			result=pre.executeQuery();
+			while(result.next())
+			{
+				list.add(result.getString(1));
+			}
+			return list;
+		} 
+		catch (SQLException e) {
+			e.printStackTrace();
+			return list;
+		}
+	}
+
+	
+	public void addRolePermission(int role_id, int table_id,ArrayList<String> list) throws SQLException
+	{
+		pre=con.prepareStatement(addRolePermission);
+		for(int i=0;i<list.size();i++)
+		{
+			pre.setInt(1,role_id);
+			pre.setInt(2,table_id);
+			pre.setString(3,list.get(i));		
+			pre.executeQuery();		
+		}
+	//	pre=con.prepareStatement("insert into rolepermission(role_id,table_id,column_id) select r.role_id ,c.table_id,c.column_id from columnname c,role r where c.table_id=74569  and r.role_id=33 and  c.adorn_name='顾客id'");
+	//	pre.executeQuery();
+	}
+
+	//TODO 异常处理好麻烦 我看到了一个向上的链式结构
+	public int getRoleid(String role_name) throws SQLException
+	{
+		pre=con.prepareStatement(getRoleid);
+		pre.setString(1, role_name);
+		result=pre.executeQuery();
+		if(result.next())
+		{
+			return result.getInt(1);
+		}
+		return -1;
+		
+	}
+	
+	public int getTableid(String table_name) throws SQLException
+	{
+		pre=con.prepareStatement(gettableid);
+		pre.setString(1, table_name);
+		result=pre.executeQuery();
+		if(result.next())
+		{
+			return result.getInt(1);
+		}
+		return -1;
+	}
+	public void deleteRolePermission(int role_id, int table_id) throws SQLException {
+		pre=con.prepareStatement(deleteRolePermission);
+		pre.setInt(1, role_id);
+		pre.setInt(2, table_id);
+		pre.executeQuery();
+	}
+	
+	public boolean hasRolePermission(int role_id, int table_id, String column) throws SQLException {
+		pre=con.prepareStatement(hasRolePermission);
+		pre.setInt(1, role_id);
+		pre.setInt(2, table_id);
+		pre.setInt(3, table_id);
+		pre.setString(4, column);
+		result=pre.executeQuery();
+		return result.next()&&result.getInt(1)==1;		
+	}
 	
     public static void main(String[] args) throws SQLException {
     	DatabaseConnect db=new DatabaseConnect();
     	if(db.connect("scott", "tiger", "localhost", "orcl"))System.out.println("db connect");
-    	System.out.println(db.hasColumn(74571, 1));
-    	
+   // 	db.addRolePermission(33, 64569, null);
     	System.out.println("over");
 	}
    
@@ -297,10 +417,11 @@ public class DatabaseConnect {
 			"create table role(role_id number primary key,role_name varchar2(30) not null unique)",
 			"create table account(account_id number  primary key,name varchar2(30) not null UNIQUE,password varchar2(30) not null)",
 			"create table roleaccount(account_id number primary key,role_id number not null)",
-			"create table rolepermission(role_id number primary key,table_id number not null,column_id number not null)",
-			"create table tablename(table_id number primary key,adorn_name varchar(30),table_name varchar(30),flag char(1) default 'N')",
+			"create table rolepermission(role_id number ,table_id number not null,column_id number not null)",
+			"create table tablename(table_id number primary key,adorn_name varchar(30) unique,table_name varchar(30),flag char(1) default 'N')",
 			"create table columnname(table_id number not null,column_id number not null,datatype varchar(106),adorn_name varchar(30),flag char(1) default 'N',no number default 1)",
-			"create table querycondition(account_id number primary key,table_id number not null,column_id number not null,con1 varchar(30),con2 varchar(30),setname varchar(30) not null)",
+			"create table querycondition(account_id number ,table_id number not null,column_id number not null,con1 varchar(30),con2 varchar(30),setname varchar(30) not null)",
+			"CREATE SEQUENCE auto_add INCREMENT BY 1   START WITH 1    NOMAXVALUE  NOCYCLE ",
 			"alter table columnname  add constraint FK_COLUMN_TABNAME_TABID foreign key (TABLE_ID)  references TABLENAME (TABLE_ID) on　delete　cascade"	
 			};
 	
@@ -312,7 +433,7 @@ public class DatabaseConnect {
 	
 	private final static String insertTableName="insert into tablename(table_id,table_name) select object_id,object_name from user_objects where object_name=?";
 	
-	private final static String updateTableName="update tablename set adorn_name= ?,flag='Y' where table_name= ?";
+	private final static String updateTableName="update tablename set adorn_name= ?,flag=? where table_name= ?";
 
 	private final static String getAdornTableName="select adorn_name from tablename where table_name=?";
 	
@@ -327,8 +448,26 @@ public class DatabaseConnect {
 			+" select o.OBJECT_ID,t.COLUMN_ID,t.DATA_TYPE  from user_objects o,user_tab_cols t "
 			+"where o.OBJECT_NAME=? and t.COLUMN_NAME=? and o.OBJECT_NAME=t.TABLE_NAME";
 
-
 	private final static String getRecordSql="select c.flag,c.adorn_name,c.no from columnname c,user_objects o,user_tab_cols t where o.OBJECT_NAME=? and t.TABLE_NAME=o.OBJECT_NAME and t.COLUMN_NAME=? and c.table_id =o.OBJECT_ID and c.COLUMN_ID=t.COLUMN_ID";
 
+	private final static String getAdornTablenameList="select adorn_name from tablename where flag='Y'";
+
+	private final static String getRoleList="select role_name from role";
+
+	private final static String addRole="insert into role values(autoadd.nextval,?)";
+
+	private final static String deleteRole="delete role where role_name=?";
+
+	private final static String getAdornColumnList="select adorn_name from columnname where flag='Y' and table_id in (select table_id from tablename where adorn_name=?)";
+
+	private final static String getRoleid="select role_id from role where role_name=?";
+	
+	private final static String gettableid="select table_id from tablename where adorn_name=?";
+	
+	private final static String addRolePermission="insert into rolepermission(role_id,table_id,column_id) select r.role_id ,c.table_id,c.column_id from columnname c,role r where r.role_id=?   and c.table_id=? and  c.adorn_name=?";
+	
+	private final static String deleteRolePermission="delete rolepermission where role_id =? and  table_id=?";
+
+	private final static String hasRolePermission="select count(*) from rolepermission r where r.role_id=? and r.table_id=? and r.column_id in (select t.column_id from columnname t where t.table_id=? and t.adorn_name=?)";
 
 }

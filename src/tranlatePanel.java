@@ -20,6 +20,11 @@ import javax.swing.JTextField;
 
 public class tranlatePanel extends JPanel
 {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
 	private DatabaseConnect db;
 
 	private JComboBox<String>tableCB;
@@ -82,12 +87,12 @@ public class tranlatePanel extends JPanel
 			
 			//当表中选项被选中时 加载列名 查看是否有翻译的表名
 			//TODO 现在使用的是itemstatechange 监听的下拉框中状态的改变 这就导致 选择第一个时不会触发
+			//这里使用内部类 是为了后面更新combobox时暂时卸下监听器方便 
 			tableCB.addItemListener(comboboxlistener );
 			
 			//当刷新重新获取表名    为了加载可能的新添加的表
 			//先保存当前选中的表 清空表名下拉框重新加载 然后将选中项设为之前保存的表 如果此时这个表已被删除的话 setSelectedItem 会选中第一项
-			//TODO 这里当会自动触发选择第一个的事件 然后setSelected又触发一次
-			//注意当同时使用其他工具更改tablename 表时 会造成表锁定 这时程序就会卡住
+			//TODO 注意当同时使用其他工具更改tablename 表时 会造成表锁定 这时程序就会卡住
 			refresh.addActionListener(new ActionListener() {
 				
 				public void actionPerformed(ActionEvent arg0) {
@@ -117,14 +122,13 @@ public class tranlatePanel extends JPanel
 						String tablename=tableCB.getSelectedItem().toString();
 						String adorntableName=adorntableNameTF.getText();
 					
-						db.updateTableName(tablename, adorntableName);
+						db.setTableName(tablename, adorntableName);
 						
 						Component[]com=content.getComponents();
 						System.out.println(com.length);
 						for(int i=0;i<com.length;i++)
 						{
 							record record=(record)com[i];
-							if(record.getFlag().equals("Y"))
 							db.setColname(tablename,record.getColName(),record.getFlag(),record.getChinese(),record.getxh());
 						}
 				} catch (SQLException e) {
@@ -169,14 +173,4 @@ public class tranlatePanel extends JPanel
 		}
 		
 	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
-
 }
