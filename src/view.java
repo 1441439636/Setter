@@ -79,10 +79,7 @@ public class view extends JFrame {
 		rootPanel.addTab("权限设置", null,new permissionPanel(db));
 		rootPanel.addTab("账号设置", null,new accountPanel(db));
 		add(rootPanel);
-		
-		
-		
-		
+
 		
 		rootPanel.addChangeListener(new ChangeListener() {
 			
@@ -100,7 +97,8 @@ public class view extends JFrame {
 						pe.refresh();
 						break;		
 					case 2:
-						accountPanel ac =(accountPanel)com;			
+						accountPanel ac =(accountPanel)com;		
+						ac.refersh();
 						break;
 				}
 			}

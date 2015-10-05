@@ -48,7 +48,10 @@ public class DatabaseConnect {
 		{
 			try{
 			pre=con.prepareStatement("drop table "+usertablename[i]);
-	  		pre.executeQuery();}
+	  		pre.executeQuery();
+			pre=con.prepareStatement("drop sequence autoadd ");
+			pre.executeQuery();
+			}
 			catch(Exception e){};
 		}
 	}
@@ -356,11 +359,9 @@ public class DatabaseConnect {
 			pre.setString(3,list.get(i));		
 			pre.executeQuery();		
 		}
-	//	pre=con.prepareStatement("insert into rolepermission(role_id,table_id,column_id) select r.role_id ,c.table_id,c.column_id from columnname c,role r where c.table_id=74569  and r.role_id=33 and  c.adorn_name='顾客id'");
-	//	pre.executeQuery();
 	}
 
-	//TODO 异常处理好麻烦 我看到了一个向上的链式结构
+	//TODO 异常处理好麻烦 我看到了一个向上的链式结构 
 	public int getRoleid(String role_name) throws SQLException
 	{
 		pre=con.prepareStatement(getRoleid);
@@ -370,10 +371,9 @@ public class DatabaseConnect {
 		{
 			return result.getInt(1);
 		}
-		return -1;
-		
+		return -1;	
 	}
-	
+
 	public int getTableid(String table_name) throws SQLException
 	{
 		pre=con.prepareStatement(gettableid);
@@ -401,14 +401,111 @@ public class DatabaseConnect {
 		result=pre.executeQuery();
 		return result.next()&&result.getInt(1)==1;		
 	}
-	
+	public void deleteaccount(String role, String text) throws SQLException
+	{
+		pre=con.prepareStatement(deleteaccount);
+		pre.setString(1, role);
+		pre.setString(2, text);
+		pre.executeQuery();
+	}	
     public static void main(String[] args) throws SQLException {
     	DatabaseConnect db=new DatabaseConnect();
     	if(db.connect("scott", "tiger", "localhost", "orcl"))System.out.println("db connect");
-   // 	db.addRolePermission(33, 64569, null);
+
     	System.out.println("over");
 	}
-   
+	public ArrayList<String[]> getAllAccount() throws SQLException {
+		ArrayList<String[]> list=new ArrayList<String[]>();
+		result=con.prepareStatement(getAllAccount).executeQuery();
+		while(result.next())
+		{
+			String[]acc=new String[3];
+			acc[0]=result.getString(1);
+			acc[1]=result.getString(2);
+			acc[2]=result.getString(3);
+			list.add(acc);
+		}
+		return list;
+	}
+	//当roleaccount表中没有时 account_id 为-1 name 是唯一的 
+	//如果有的话更新roleaccount 和account
+	//没有 先获得account_id 在 插入 roleaccount account
+	public void setaccount(String role, String name, String pass) throws SQLException
+	{
+		int role_id=getRoleid(role);
+		int account_id=getAccountid(name);
+		boolean isExit=account_id!=-1;
+		if(isExit)
+		{
+			updateRoleAccount(role_id,account_id);
+			updateAccount(account_id,name,pass);
+		}
+		else
+		{
+			int id=getAutoaddNext();
+			insertRoleAccount(role_id,id);
+			insertAccount(id,name,pass);
+		}
+	}
+	private void insertAccount(int account_id, String name, String pass) throws SQLException {
+		pre=con.prepareStatement(insertAccount);
+		pre.setInt(1,account_id);
+		pre.setString(2, name);
+		pre.setString(3, pass);
+		pre.executeQuery();
+	}
+	private void updateRoleAccount(int role_id, int account_id) throws SQLException {
+		pre=con.prepareStatement(updateRoleAccount);
+		pre.setInt(1, role_id);
+		pre.setInt(2, account_id);
+		pre.executeQuery();
+	}
+	private int getAutoaddNext() throws SQLException
+	{
+		result=con.prepareStatement(getAutoaddNext).executeQuery();
+		result.next();
+		return result.getInt(1);
+	}
+	private void insertRoleAccount(int role_id,int account_id) throws SQLException
+	{
+		pre=con.prepareStatement(insertRoleAccount);
+		pre.setInt(1, account_id);		
+		pre.setInt(2, role_id);
+		pre.executeQuery();
+	}
+	private void updateAccount(int account_id, String name, String pass) throws SQLException {
+		pre=con.prepareStatement(updateAccount);
+		pre.setString(1, name);
+		pre.setString(2, pass);
+		pre.setInt(3, account_id);
+		pre.executeQuery();
+	}
+	
+	public ArrayList<String[]> getAccountByRole(String role_name) throws SQLException {
+		ArrayList<String[]> list=new ArrayList<String[]>();
+		pre=con.prepareStatement(getAccountByRole);
+		pre.setString(1, role_name);
+		result=pre.executeQuery();
+		while(result.next())
+		{
+			String[]acc=new String[3];
+			acc[0]=result.getString(1);
+			acc[1]=result.getString(2);
+			acc[2]=result.getString(3);
+			list.add(acc);
+		}
+		return list;
+	}
+	private int getAccountid(String name) throws SQLException {
+		pre=con.prepareStatement(getAccountid);
+		pre.setString(1, name);
+		result=pre.executeQuery();
+		if(result.next())
+		{
+			return result.getInt(1);
+		}
+		return -1;
+	}
 	private static final String[] usertablename={"ROLE","ACCOUNT","ROLEACCOUNT","ROLEPERMISSION","TABLENAME","COLUMNNAME","QUERYCONDITION"};
 
 	private static final String hasAllUserTables="select count(*) from user_objects where object_name in ('ROLE','ACCOUNT','ROLEACCOUNT','ROLEPERMISSION','TABLENAME','COLUMNNAME','QUERYCONDITION')";
@@ -469,5 +566,22 @@ public class DatabaseConnect {
 	private final static String deleteRolePermission="delete rolepermission where role_id =? and  table_id=?";
 
 	private final static String hasRolePermission="select count(*) from rolepermission r where r.role_id=? and r.table_id=? and r.column_id in (select t.column_id from columnname t where t.table_id=? and t.adorn_name=?)";
+	
+	private final static String getAllAccount="select r.role_name, a.name,a.password  from roleaccount c,account a,role r where a.account_id=c.account_id and r.role_id=c.role_id";
 
+	private final static String deleteaccount="delete  from roleaccount r where r.role_id in (select role_id from role where role_name=?) and r.account_id in (select account_id from account where name=?)";
+
+	private final static String getAccountid="select account_id from account where name=?";
+	
+	private final static String getAutoaddNext="select autoadd.nextval as id from dual";
+	
+	private final static String updateAccount="update account set name=?,password=? where account_id=?";
+	
+	private final static String updateRoleAccount="update roleaccount set role_id=? where account_id=?";
+	
+	private final static String insertRoleAccount="insert into roleaccount values(?,?)";
+		
+	private final static String insertAccount="insert into account(account_id,name,password) values(?,?,?)";
+
+	private final static String getAccountByRole="select r.role_name, a.name,a.password  from roleaccount c,account a,role r where a.account_id=c.account_id and r.role_id=c.role_id and r.role_name=?";
 }
