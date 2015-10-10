@@ -423,7 +423,6 @@ public class DatabaseConnect {
 			pre.executeQuery();		
 		}
 	}
-
 	//TODO 异常处理好麻烦 我看到了一个向上的链式结构 
 	public int getRoleid(String role_name) throws SQLException
 	{
@@ -606,7 +605,7 @@ public class DatabaseConnect {
 			"create table tablename(table_id number primary key,adorn_name varchar(30) unique,table_name varchar(30),flag char(1) default 'N')",
 			"create table columnname(table_id number not null,column_name varchar2(30) not null,datatype varchar(106),adorn_name varchar(30),flag char(1) default 'N',no number default 1)",
 			"create table querycondition(account_id number ,table_id number not null,column_name varchar2(30) not null,flag char(1) default 'N',con1 varchar(30),con2 varchar(30),setname varchar(30) not null)",
-			"CREATE SEQUENCE auto_add INCREMENT BY 1   START WITH 1    NOMAXVALUE  NOCYCLE ",
+			"CREATE SEQUENCE autoadd INCREMENT BY 1   START WITH 1    NOMAXVALUE  NOCYCLE ",
 			"alter table ACCOUNT  add constraint FK_ACCOUNT_ROLEACCOUNT foreign key (ACCOUNT_ID)  references ROLEACCOUNT (ACCOUNT_ID) on　delete　cascade",
 			"alter table ROLEACCOUNT  add constraint FK_ROLEACCOUNT_ROLE foreign key (ROLE_ID)  references role (ROLE_ID) on　delete　cascade",
 			"alter table ROLEPERMISSION  add constraint FK_PERMISS_ROLE foreign key (ROLE_ID)  references role (ROLE_ID) on　delete　cascade",
@@ -653,11 +652,11 @@ public class DatabaseConnect {
 	
 	private final static String gettableid="select table_id from tablename where adorn_name=?";
 	
-	private final static String addRolePermission="insert into rolepermission(role_id,table_id,column_id) select r.role_id ,c.table_id,c.column_id from columnname c,role r where r.role_id=?   and c.table_id=? and  c.adorn_name=?";
+	private final static String addRolePermission="insert into rolepermission(role_id,table_id,column_name) select r.role_id ,c.table_id,c.column_name from columnname c,role r  where r.role_id=? and  c.table_id=? and  c.adorn_name=?";
 	
 	private final static String deleteRolePermission="delete rolepermission where role_id =? and  table_id=?";
 
-	private final static String hasRolePermission="select count(*) from rolepermission r where r.role_id=? and r.table_id=? and r.column_id in (select t.column_id from columnname t where t.table_id=? and t.adorn_name=?)";
+	private final static String hasRolePermission="select count(*) from rolepermission r where r.role_id=? and r.table_id=? and r.column_name in (select t.column_name from columnname t where t.table_id=? and t.adorn_name=?)";
 	
 	private final static String getAllAccount="select r.role_name, a.name,a.password  from roleaccount c,account a,role r where a.account_id=c.account_id and r.role_id=c.role_id";
 

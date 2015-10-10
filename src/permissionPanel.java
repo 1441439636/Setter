@@ -28,7 +28,6 @@ public class permissionPanel extends JPanel{
 	private JComboBox<String>tableCB;
 	private JPanel content;
 	private JButton confirm;
-	private JButton cancle;
 
 	private final ComboBoxListener com=new ComboBoxListener();
 
@@ -53,7 +52,6 @@ public class permissionPanel extends JPanel{
 		addRole=new JButton("新增角色");
 		deleteRole=new JButton("删除角色");
 		confirm=new JButton("确定");
-		cancle=new JButton("取消");
 		
 		panel.add(new JLabel("选择角色"));
 		panel.add(roleCB);
@@ -72,7 +70,6 @@ public class permissionPanel extends JPanel{
 		add(jsc,BorderLayout.CENTER);
 		panel=new JPanel();
 		panel.add(confirm);
-		panel.add(cancle);
 		add(panel,BorderLayout.SOUTH);
 	}
 	
@@ -123,11 +120,12 @@ public class permissionPanel extends JPanel{
 			public void actionPerformed(ActionEvent arg0) {
 				String rolename=roleCB.getSelectedItem().toString();
 				db.deleteRole(rolename);
+				content.removeAll();
 				loadRolename();
 			}
 		});
 		
-		tableCB.addItemListener(com);
+		tableCB.addActionListener(com);
 	
 		confirm.addActionListener(new ActionListener() {
 			
@@ -135,20 +133,26 @@ public class permissionPanel extends JPanel{
 				Component[] com=content.getComponents();
 				
 				try {
-					int role_id = db.getRoleid(roleCB.getSelectedItem().toString());
-				
-					int table_id=db.getTableid(tableCB.getSelectedItem().toString());
-					db.deleteRolePermission(role_id,table_id);
-					ArrayList<String>list=new ArrayList<String>();
-					for(int i=0;i<com.length;i++)
+					
+					int role_id =0;			
+					int table_id=0;
+					if(roleCB.getSelectedItem().toString() != null&&tableCB.getSelectedItem().toString()!=null)
 					{
-						permissionRecord record=(permissionRecord)com[i];
-						if(record.isSelectd())
+						role_id=db.getRoleid(roleCB.getSelectedItem().toString());	
+						table_id=db.getTableid(tableCB.getSelectedItem().toString());
+						db.deleteRolePermission(role_id,table_id);
+						ArrayList<String>list=new ArrayList<String>();
+						for(int i=0;i<com.length;i++)
 						{
-							list.add(record.getName());
+							permissionRecord record=(permissionRecord)com[i];
+							if(record.isSelectd())
+							{
+								list.add(record.getName());
+							}
 						}
+						db.addRolePermission(role_id,table_id,list);
 					}
-					db.addRolePermission(role_id,table_id,list);
+					
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}
@@ -160,39 +164,50 @@ public class permissionPanel extends JPanel{
 	
 	public void refresh()
 	{
-		System.out.println("refersn");
-		tableCB.removeItemListener(com);
-		String onselect=tableCB.getSelectedItem().toString();
-		loadTablename();
-		tableCB.addItemListener(com);
-		tableCB.setSelectedItem(onselect);
-	}
-	//TODO 处理好 table_id 和 role_id 的变量  用id好麻烦啊摔
-	class ComboBoxListener implements ItemListener
-	{
-		public void itemStateChanged(ItemEvent e)
+		if(tableCB.getSelectedItem()!=null)
 		{
+			System.out.println("refersn");
+			tableCB.removeActionListener(com);	
+			String onselect=tableCB.getSelectedItem().toString();
+			loadTablename();
+			tableCB.addActionListener(com);
+			tableCB.setSelectedItem(onselect);			
+		}
+
+	}
+	
+	class ComboBoxListener implements ActionListener
+	{
+	
+
+		public void actionPerformed(ActionEvent arg0) {
 			System.out.println("on lis");
 			try {
 					content.removeAll();
 					String tablename=tableCB.getSelectedItem().toString();
 					ArrayList<String>list=db.getAdornColumnList(tablename);
-					int role_id = db.getRoleid(roleCB.getSelectedItem().toString());	
-					int table_id=db.getTableid(tableCB.getSelectedItem().toString());
-				
-					for(int i=0;i<list.size();i++)
-					{
-						permissionRecord record=new permissionRecord("N",list.get(i));
 					
-						if(db.hasRolePermission(role_id,table_id,list.get(i)))
-								record.setSelect(true);
-						content.add(record);
+					if(roleCB.getSelectedItem()!=null)
+					{
+						int role_id = db.getRoleid(roleCB.getSelectedItem().toString());
+						int table_id=db.getTableid(tableCB.getSelectedItem().toString());
+					
+						for(int i=0;i<list.size();i++)
+						{
+							permissionRecord record=new permissionRecord("N",list.get(i));
+						
+							if(db.hasRolePermission(role_id,table_id,list.get(i)))
+									record.setSelect(true);
+							content.add(record);
+						}
+						content.updateUI();					
 					}
-					content.updateUI();			
+				
 				} catch (SQLException e1)
 				{
 						e1.printStackTrace();
 				}
+			
 		}
 	}
 

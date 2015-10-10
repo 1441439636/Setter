@@ -93,8 +93,12 @@ public class accountPanel extends JPanel
 		addAccount.addActionListener(new ActionListener() {
 			
 			public void actionPerformed(ActionEvent arg0) {
+				
 				content.removeAll();
+				if(roleCB.getSelectedItem()!=null)
+				{
 				content.add(new accountRecord(roleCB.getSelectedItem().toString()));
+				}
 				content.updateUI();
 			}
 		});
