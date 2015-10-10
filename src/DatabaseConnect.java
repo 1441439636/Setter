@@ -42,6 +42,57 @@ public class DatabaseConnect {
 		}
     	return true;
     }
+    
+    /**
+     * 将表转化成视图 
+     * @param list
+     * @return
+     * @throws SQLException 
+     */
+    private void transTabletoView()
+    {
+    	try {
+    		ResultSet result=con.prepareStatement("select object_name from user_objects where object_type='TABLE' and object_name not in ('ROLE','ACCOUNT','ROLEACCOUNT','ROLEPERMISSION','TABLENAME','COLUMNNAME','QUERYCONDITION') order by object_name").executeQuery();
+    	
+    	while(result.next())
+    	{
+    		String name=result.getString(1);
+    		if(!hasview(name+"_view"))
+    		{
+    			createview(name);
+    		}
+    		
+    		
+    	}
+    	
+    	} catch (SQLException e) {
+			// TODO Auto-generated catch block
+    		System.out.println("here");
+			e.printStackTrace();
+		}
+    }
+    
+    private void createview(String name) throws SQLException 
+    {	
+    	pre=con.prepareStatement("create or replace view "+name+"_view"+" as select * from "+name);
+		pre.executeQuery();
+	}
+	private boolean hasview(String name)
+    {
+    	try {
+			pre=con.prepareStatement(hasView);
+			pre.setString(1, name);
+			ResultSet result=pre.executeQuery();
+			if(result.next()&&result.getInt(1)==0)
+				return false;
+			
+    		} catch (SQLException e) {
+    			System.out.println("here");
+			e.printStackTrace();
+			return false;
+		}
+    	return true;
+    }
 	private void dropAllUserTables() 
 	{	
 		for(int i=0;i<usertablename.length;i++)
@@ -78,38 +129,25 @@ public class DatabaseConnect {
 	}
 
   	
-  	public void close(){
-  		try{  
-  			if (result != null)
-  				result.close();
-  			if (pre != null)
-  				pre.close();
-  			if (con != null)
-  				con.close();
-  	   System.out.println("数据库连接已关闭！");
-  		}
-  	  catch (Exception e)
-	    {
-	    	System.out.println("数据库关闭异常");
-	        e.printStackTrace();
-	    }
-  	}
-	
-  	public ArrayList<String> getUnadornTableNameList()
+
+  	//先检查有没有没有创建视图的表 创建视图
+  	//只读取视图
+  	public ArrayList<String> getUnadornViewList() 
   	{  	
+  		
   		ArrayList<String>tablename=new ArrayList<String>();
     	try {
-			result=con.prepareStatement(getUnadornedTableNameListSql).executeQuery();
-		
+    		transTabletoView();
+			result=con.prepareStatement(getUnadornedViewListSql).executeQuery();			
 	    	while(result.next())
 	    	{
 	    		tablename.add(result.getString(1));
 	    	}
 	    	return tablename;
-    	} 
-    	
+    	}
     	catch (SQLException e) {		
 			e.printStackTrace();
+			tablename.clear();
 			return tablename;
 		}
  	}
@@ -142,11 +180,11 @@ public class DatabaseConnect {
   		return result.next()&&result.getInt(1)==1;
 	}
 
-	private boolean hasColumn(int table_id,int column_id) throws SQLException
+	private boolean hasColumn(int table_id,String column_name) throws SQLException
 	{
 		pre=con.prepareStatement(isEixtColumnName);
   		pre.setInt(1, table_id);
-  		pre.setInt(2, column_id);
+  		pre.setString(2, column_name);
 		result=pre.executeQuery();
 		return result.next()&&result.getInt(1)==1;
 	}
@@ -196,21 +234,46 @@ public class DatabaseConnect {
   		return str;
 	}
 
-
+	private String getDateType(String tablename,String column_name)
+	{
+		String str="";
+  		try {
+	  		pre=con.prepareStatement(getDateType);
+			pre.setString(1, tablename);
+			pre.setString(2, column_name);
+			pre.executeQuery();
+	  		result=pre.executeQuery();
+			if(result.next())
+	  		{	
+				str=result.getString(1);
+	  		}
+  		} catch (SQLException e) {
+			e.printStackTrace();
+			return str;
+  		}		
+  		return str;
+		
+	}
 	/*
 	 * 更新columnname 到底是使用column_id 还是直接用列名 选择了用id 列名虽然不多但 毕竟有三张表使用 
-	 * 
+	 * 然而并没有卵用 还是改成列名
 	 * 
 	 */
 	//根据表名列名插入tableid columnid datatype
-	private void insertColname(String tablename,String columnname) throws SQLException
+	private void insertColname(String tablename,int table_id,String column_name,String flag,String chinese, int xh) throws SQLException
 	{
+		String datatype=getDateType(tablename,column_name);
 		pre=con.prepareStatement(insertColName);
-		pre.setString(1, tablename);
-		pre.setString(2, columnname);
+		pre.setInt(1, table_id);
+		pre.setString(2,column_name);		
+		pre.setString(3, chinese);
+		pre.setString(4,datatype);		
+		pre.setString(5,flag);		
+		pre.setInt(6,xh);
 		pre.executeQuery();
+		
 	}
-	private void updateColname(int table_id,int column_id,String flag,String chinese, int xh) throws SQLException
+	private void updateColname(int table_id,String column_name,String flag,String chinese, int xh) throws SQLException
 	{
 		pre=con.prepareStatement(updateColName);
 	//	columnname set adorn_name= ?, flag = ? , no= ? where table_id = ? and column_id=?
@@ -218,46 +281,47 @@ public class DatabaseConnect {
 		pre.setString(2,flag);		
 		pre.setInt(3,xh);
 		pre.setInt(4,table_id );
-		pre.setInt(5,column_id );
+		pre.setString(5,column_name );
 		pre.executeQuery();
 	}
 	
+	
+	//插入columnname
+	//首先 获取table_id
+	//检测是否之前已经插入列名
+	//存在 直接插入
+	//不存在先插入
 	public void setColname(String tablename, String colName, String flag,
 		String chinese, int xh) throws SQLException {
-		int table_id=0;
-		int column_id=0;
-		System.out.println(tablename+"  "+colName+" "+flag+" "+chinese+" "+xh);
-		pre=con.prepareStatement(getTable_idColumn_id);
+		
+		int table_id=0;		
+		pre=con.prepareStatement(getTableid);
 		pre.setString(1, tablename);
-		pre.setString(2, colName);
 		result=pre.executeQuery();
 		if(result.next())
 		{
 			table_id=result.getInt(1);
-			column_id=result.getInt(2);	
-		System.out.println(table_id+"  "+column_id);
 		}
 		else return;
-
-		boolean isExit=hasColumn(table_id,column_id);
+		
+		boolean isExit=hasColumn(table_id,colName);
 		if(isExit)
 		{
-			updateColname(table_id,column_id,flag,chinese,xh);
+			updateColname(table_id,colName,flag,chinese,xh);
 		}
 		else 
 		{
-			insertColname(tablename,colName);
-			updateColname(table_id,column_id,flag,chinese,xh);
+			insertColname(tablename,table_id,colName,flag,chinese,xh);
 		}
 		
 	}
 	
-  	public ArrayList<String> getRecord(String tableName, String colname)
+  	public ArrayList<String> getRecord(int id, String colname)
   	{  		
   		ArrayList<String>set=new ArrayList<String>();
   		try {
 			pre=con.prepareStatement(getRecordSql);
-			pre.setString(1, tableName);
+			pre.setInt(1, id);
 			pre.setString(2, colname);
 			result=pre.executeQuery();
 			if(result.next())
@@ -292,7 +356,6 @@ public class DatabaseConnect {
 	}
   
 	//TODO 注意到有一些方法的结构类似 ->使用sql 传出一维的list 是否可以将其抽象为一个方法
-	//TODO 注意当用plsql 直接插入一个角色是 在这里是读不了的 只有关了plsql? 才可以
 	public ArrayList<String> getRoleList() {
 		ArrayList<String>list=new ArrayList<String>();
 		try {
@@ -411,7 +474,14 @@ public class DatabaseConnect {
     public static void main(String[] args) throws SQLException {
     	DatabaseConnect db=new DatabaseConnect();
     	if(db.connect("scott", "tiger", "localhost", "orcl"))System.out.println("db connect");
-
+    	ArrayList<String>list=db.getUnadornViewList();
+//    	for(int i=0;i<list.size();i++)
+//    	{
+//    	//	System.out.println(list.get(i));
+//    	}
+//    	
+ //   	db.createview("ORDERITEMS");
+  //  	System.out.println(db.hasview("ORDERITEMS_view"));
     	System.out.println("over");
 	}
 	public ArrayList<String[]> getAllAccount() throws SQLException {
@@ -506,6 +576,24 @@ public class DatabaseConnect {
 		}
 		return -1;
 	}
+	
+	public int getidByunadornname(String onselecttable) {
+	
+		try {
+		pre=con.prepareStatement(getidByunadornname);
+			pre.setString(1, onselecttable);
+		
+		result=pre.executeQuery();
+		if(result.next())
+		{
+			return result.getInt(1);
+		}
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+		return -1;
+	}
 	private static final String[] usertablename={"ROLE","ACCOUNT","ROLEACCOUNT","ROLEPERMISSION","TABLENAME","COLUMNNAME","QUERYCONDITION"};
 
 	private static final String hasAllUserTables="select count(*) from user_objects where object_name in ('ROLE','ACCOUNT','ROLEACCOUNT','ROLEPERMISSION','TABLENAME','COLUMNNAME','QUERYCONDITION')";
@@ -514,15 +602,22 @@ public class DatabaseConnect {
 			"create table role(role_id number primary key,role_name varchar2(30) not null unique)",
 			"create table account(account_id number  primary key,name varchar2(30) not null UNIQUE,password varchar2(30) not null)",
 			"create table roleaccount(account_id number primary key,role_id number not null)",
-			"create table rolepermission(role_id number ,table_id number not null,column_id number not null)",
+			"create table rolepermission(role_id number ,table_id number not null,column_name varchar2(30) not null)",
 			"create table tablename(table_id number primary key,adorn_name varchar(30) unique,table_name varchar(30),flag char(1) default 'N')",
-			"create table columnname(table_id number not null,column_id number not null,datatype varchar(106),adorn_name varchar(30),flag char(1) default 'N',no number default 1)",
-			"create table querycondition(account_id number ,table_id number not null,column_id number not null,con1 varchar(30),con2 varchar(30),setname varchar(30) not null)",
+			"create table columnname(table_id number not null,column_name varchar2(30) not null,datatype varchar(106),adorn_name varchar(30),flag char(1) default 'N',no number default 1)",
+			"create table querycondition(account_id number ,table_id number not null,column_name varchar2(30) not null,flag char(1) default 'N',con1 varchar(30),con2 varchar(30),setname varchar(30) not null)",
 			"CREATE SEQUENCE auto_add INCREMENT BY 1   START WITH 1    NOMAXVALUE  NOCYCLE ",
-			"alter table columnname  add constraint FK_COLUMN_TABNAME_TABID foreign key (TABLE_ID)  references TABLENAME (TABLE_ID) on　delete　cascade"	
-			};
+			"alter table ACCOUNT  add constraint FK_ACCOUNT_ROLEACCOUNT foreign key (ACCOUNT_ID)  references ROLEACCOUNT (ACCOUNT_ID) on　delete　cascade",
+			"alter table ROLEACCOUNT  add constraint FK_ROLEACCOUNT_ROLE foreign key (ROLE_ID)  references role (ROLE_ID) on　delete　cascade",
+			"alter table ROLEPERMISSION  add constraint FK_PERMISS_ROLE foreign key (ROLE_ID)  references role (ROLE_ID) on　delete　cascade",
+			"alter table COLUMNNAME  add constraint FK_COLUMNAME_TABLENAME foreign key (TABLE_ID)  references TABLENAME (TABLE_ID) on　delete　cascade",
+			"alter table QUERYCONDITION  add constraint FK_QUERYCONDITION_ACCOUNT foreign key (ACCOUNT_ID)  references ACCOUNT (ACCOUNT_ID) on　delete　cascade",
+			"alter table QUERYCONDITION  add constraint FK_QUERYCONDITION_TABLENAME foreign key (TABLE_ID)  references TABLENAME (TABLE_ID) on　delete　cascade"
+	};
 	
-	private final static String getUnadornedTableNameListSql="select object_name from user_objects where object_type in ('TABLE','VIEW') and object_name not in ('ROLE','ACCOUNT','ROLEACCOUNT','ROLEPERMISSION','TABLENAME','COLUMNNAME','QUERYCONDITION') order by object_name";
+	private final static String getUnadornedTableListSql="select object_name from user_objects where object_type='TABLE' and object_name not in ('ROLE','ACCOUNT','ROLEACCOUNT','ROLEPERMISSION','TABLENAME','COLUMNNAME','QUERYCONDITION') order by object_name";
+
+	private final static String getUnadornedViewListSql="select object_name from user_objects where object_type='VIEW'  order by object_name";
 
 	private final static String getUnadornedColumnListSql="select column_name from user_tab_cols where table_name=?";
 	
@@ -534,18 +629,15 @@ public class DatabaseConnect {
 
 	private final static String getAdornTableName="select adorn_name from tablename where table_name=?";
 	
-	private final static String getTable_idColumn_id="select o.OBJECT_ID,t.COLUMN_ID  from user_objects o,user_tab_cols t where o.OBJECT_NAME=? and t.COLUMN_NAME=? and o.OBJECT_NAME=t.TABLE_NAME";
+	private final static String getTableid="select o.OBJECT_ID from user_objects o where o.OBJECT_NAME=? ";
 	
-	private final static String isEixtColumnName="select count(*)  from columnname c where  c.table_id=? and c.column_id=?";
+	private final static String isEixtColumnName="select count(*)  from columnname c where  c.table_id=? and c.column_name=?";
 	
-	private final static String updateColName="update columnname set adorn_name= ?, flag = ? , no= ? where table_id = ? and column_id=?";
+	private final static String updateColName="update columnname set adorn_name= ?, flag = ? , no= ? where table_id = ? and column_name=?";
 	
-	private final static String insertColName=
-			"insert into columnname(table_id,column_id,datatype)"
-			+" select o.OBJECT_ID,t.COLUMN_ID,t.DATA_TYPE  from user_objects o,user_tab_cols t "
-			+"where o.OBJECT_NAME=? and t.COLUMN_NAME=? and o.OBJECT_NAME=t.TABLE_NAME";
+	private final static String insertColName="insert into columnname(table_id,column_name,adorn_name,datatype,flag,no) values(?,?,?,?,?,?)";
 
-	private final static String getRecordSql="select c.flag,c.adorn_name,c.no from columnname c,user_objects o,user_tab_cols t where o.OBJECT_NAME=? and t.TABLE_NAME=o.OBJECT_NAME and t.COLUMN_NAME=? and c.table_id =o.OBJECT_ID and c.COLUMN_ID=t.COLUMN_ID";
+	private final static String getRecordSql="select c.flag,c.adorn_name,c.no from columnname c where c.table_id =? and c.column_name=?";
 
 	private final static String getAdornTablenameList="select adorn_name from tablename where flag='Y'";
 
@@ -584,4 +676,16 @@ public class DatabaseConnect {
 	private final static String insertAccount="insert into account(account_id,name,password) values(?,?,?)";
 
 	private final static String getAccountByRole="select r.role_name, a.name,a.password  from roleaccount c,account a,role r where a.account_id=c.account_id and r.role_id=c.role_id and r.role_name=?";
+
+	private final static String hasView="select count(*) from user_objects where object_name=?";
+	
+	private final static String createView="create or replace view ? as select * from ?";
+	
+	private final static String getidByunadornname="select object_id from user_objects where object_name=? ";
+	
+	private final static String getDateType="select data_type from user_tab_cols where table_name=? and column_name=? ";
+	
+	
+	
+	
 }

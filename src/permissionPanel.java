@@ -38,6 +38,7 @@ public class permissionPanel extends JPanel{
 		initComponent();
 		addAcctionListener();
 	}
+	
 	private void initComponent()
 	{
 		setLayout(new BorderLayout());

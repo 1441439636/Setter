@@ -59,11 +59,11 @@ public class view extends JFrame {
 			}
 			return false;
 		}
-		catch (Exception e) {
+		catch (Exception e) 
+		{
 			e.printStackTrace();
 			return false;
 		}
-		
 	}
 	private void initFrame() {
 		setFeel();
