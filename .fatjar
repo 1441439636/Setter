@@ -1,14 +1,14 @@
 #Fat Jar Configuration File
-#Wed Sep 09 09:57:54 CST 2015
+#Thu Nov 05 20:51:11 CST 2015
 onejar.license.required=false
 manifest.classpath=
 manifest.removesigners=true
 onejar.checkbox=true
-jarname=Server.jar
+jarname=C\:\\Users\\cong\\Desktop\\Setter.jar
 manifest.mergeall=true
-manifest.mainclass=view
+manifest.mainclass=SetterMainView
 manifest.file=<createnew>
-jarname.isextern=false
+jarname.isextern=true
 onejar.expand=
 excludes=
 includes=
