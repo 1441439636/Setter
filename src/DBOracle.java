@@ -382,7 +382,7 @@ public class DBOracle implements Database {
         return str;
     }
 
-    public String getDateType(String tablename, String column_name) {
+    public String getDataType(String tablename, String column_name) {
         String str = "";
         try {
             PreparedStatement pre = null;
@@ -413,7 +413,7 @@ public class DBOracle implements Database {
     // 根据表名列名插入tableid columnid datatype
     public void insertColname(String tablename, int table_id,
                               String column_name, String flag, String chinese, int xh) throws SQLException {
-        String datatype = getDateType(tablename, column_name);
+        String datatype = getDataType(tablename, column_name);
         PreparedStatement pre = null;
         pre = con.prepareStatement(insertColName);
         pre.setInt(1, table_id);
@@ -447,28 +447,34 @@ public class DBOracle implements Database {
     // 存在 直接插入
     // 不存在先插入
     public void setColname(String tablename, String colName, String flag,
-                           String chinese, int xh) throws SQLException {
+                           String chinese, int xh) {
+        String getTableid = "select o.OBJECT_ID from user_objects o where o.OBJECT_NAME=? ";
 
         int table_id = 0;
         PreparedStatement pre = null;
-        pre = con.prepareStatement(getTableid);
-        pre.setString(1, tablename);
-        ResultSet result = pre.executeQuery();
-        if (result.next()) {
-            table_id = result.getInt(1);
-            result.close();
-        } else {
-            result.close();
-            return;
-        }
-        pre.close();
+        try {
+            pre = con.prepareStatement(getTableid);
+            pre.setString(1, tablename);
+            ResultSet result = pre.executeQuery();
+            if (result.next()) {
+                table_id = result.getInt(1);
+                result.close();
+            } else {
+                result.close();
+                return;
+            }
+            pre.close();
 
-        boolean isExit = hasColumn(table_id, colName);
-        if (isExit) {
-            updateColname(table_id, colName, flag, chinese, xh);
-        } else {
-            insertColname(tablename, table_id, colName, flag, chinese, xh);
+            boolean isExit = hasColumn(table_id, colName);
+            if (isExit) {
+                updateColname(table_id, colName, flag, chinese, xh);
+            } else {
+                insertColname(tablename, table_id, colName, flag, chinese, xh);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
+
 
     }
 
@@ -688,19 +694,22 @@ public class DBOracle implements Database {
         }
     }
 
-    public int getTableid(String table_name) throws SQLException {
-        PreparedStatement pre = null;
-        pre = con.prepareStatement(gettableid);
-        pre.setString(1, table_name);
-        ResultSet result = pre.executeQuery();
+    public int getTableid(String table_name) {
+        String gettableid = "select table_id from tablename where adorn_name=?";
         int i = -1;
-        if (result.next()) {
-            i = result.getInt(1);
-
+        PreparedStatement pre = null;
+        try {
+            pre = con.prepareStatement(gettableid);
+            pre.setString(1, table_name);
+            ResultSet result = pre.executeQuery();
+            if (result.next()) {
+                i = result.getInt(1);
+            }
+            result.close();
+            pre.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-
-        result.close();
-        pre.close();
         return i;
     }
 
@@ -838,20 +847,16 @@ public class DBOracle implements Database {
     }
 
     public int getidByunadornname(String onselecttable) {
-
         try {
             PreparedStatement pre = null;
-
+            String getidByunadornname = "select object_id from user_objects where object_name=? ";
             pre = con.prepareStatement(getidByunadornname);
             pre.setString(1, onselecttable);
-
             ResultSet result = pre.executeQuery();
             int i = -1;
             if (result.next()) {
                 i = result.getInt(1);
-
             }
-
             result.close();
             pre.close();
             return i;
@@ -918,8 +923,6 @@ public class DBOracle implements Database {
 
     private final static String getAdornTableName = "select adorn_name from tablename where table_name=?";
 
-    private final static String getTableid = "select o.OBJECT_ID from user_objects o where o.OBJECT_NAME=? ";
-
     private final static String isEixtColumnName = "select count(*)  from columnname c where  c.table_id=? and c.column_name=?";
 
     private final static String updateColName = "update columnname set adorn_name= ?, flag = ? , no= ? where table_id = ? and column_name=?";
@@ -945,9 +948,6 @@ public class DBOracle implements Database {
     private final static String hasAccount = "select count(*) from account where name=?";
 
     private final static String deleAccount = "delete from account  where account_id=?";
-
-    private final static String gettableid = "select table_id from tablename where adorn_name=?";
-
     private final static String addRolePermission = "insert into rolepermission(role_id,table_id,column_name) select r.role_id ,c.table_id,c.column_name from columnname c,role r  where r.role_id=? and  c.table_id=? and  c.adorn_name=?";
 
     private final static String deleteRolePermission = "delete rolepermission where role_id =? and  table_id=?";
@@ -975,8 +975,6 @@ public class DBOracle implements Database {
     private final static String hasView = "select count(*) from user_objects where object_name=?";
 
     private final static String createView = "create or replace view ? as select * from ?";
-
-    private final static String getidByunadornname = "select object_id from user_objects where object_name=? ";
 
     private final static String getDataType = "select data_type from user_tab_cols where table_name=? and column_name=? ";
 

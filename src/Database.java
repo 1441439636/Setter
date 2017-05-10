@@ -53,7 +53,7 @@ public interface Database {
 
     String getAdornTableName(String onselecttable);
 
-    String getDateType(String tablename, String column_name);
+    String getDataType(String tablename, String column_name);
 
     /*
      * 更新columnname 到底是使用column_id 还是直接用列名 选择了用id 列名虽然不多但 毕竟有三张表使用 然而并没有卵用

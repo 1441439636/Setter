@@ -39,13 +39,17 @@ public class SetterMainView extends JFrame {
             int state = log.showdia(this, "登录");
             System.out.println("state=" + state);
             if (state == 1) {
-                if (DNAME.equals("Oracle")) {
-                    System.out.println("Oracle=");
-                    db = new DBOracle();
-                } else {
-                    System.out.println("SqlServer=");
-                    db = new DBSqlServer();
-                }
+//                if (DNAME.equals("Oracle")) {
+//                    System.out.println("Oracle=");
+//                    db = new DBOracle();
+//                } else if (DNAME.equals("SqlServer")) {
+//                    System.out.println("SqlServer=");
+//                    db = new DBSqlServer();
+//                } else {
+//                    System.out.println("MySql=");
+//                    db = new DBMySql();
+//                }
+                db=new DBFactory().createDB(DNAME);
                 //用登录界面的用户名密码尝试登录数据库
                 return db.connect(log.getUserName(), log.getPassword());
             } else {

@@ -7,70 +7,73 @@ import java.util.HashMap;
 
 /*
  * 使用connect 初始化  connect 因为有可能数据库登录连接失败
- * 
- * 
+ *
+ *
  */
-public class DBSqlServer implements Database {
-
+public class DBMySql implements Database {
+    private String dbName = null;
     private Connection con = null;
 
-//    DBSqlServer() {
+//    DBMySql() {
 //        String[] dba = RegistUtil.read();
-//        String url = "jdbc:sqlserver://" + dba[3] + ":1433;DatabaseName=" + dba[4];
+//        dbName = dba[4];
+//        L.d(Arrays.toString(dba));
+//        String url = "jdbc:mysql://" + dba[3] + ":3306/" + dba[4];
 //        try {
-//            //获取注册表中的存储
-//            L.d(Arrays.toString(dba));
-//            // 初始化Connection properties
-//            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");// 加载Oracle驱动程序
+//            Class.forName("com.mysql.jdbc.Driver");
 //            con = DriverManager.getConnection(url, dba[1], dba[2]);
 //            System.out.println("数据库链接成功");
 //        } catch (Exception e) {
-//            System.out.println("链接错误");
+//            e.printStackTrace();
 //        }
-//        // 全局变量以便使用
 //    }
 
+    //true
     public Boolean connect(String logname, String logpass) {
+
         //获取注册表中的存储
         String[] dba = RegistUtil.read();
-        String jdbc = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
-        String url = "jdbc:sqlserver://" + dba[3] + ":1433;DatabaseName=" + dba[4];
+        dbName = dba[4];
         try {
-            //获取注册表中的存储
             L.d(Arrays.toString(dba));
-            // 初始化Connection properties
-            Class.forName(jdbc);// 加载Oracle驱动程序
-//            Properties common = new Properties();
-//            common.put("user", dba[1]);
-//            common.put("password", dba[2]);
+            String url = "jdbc:mysql://" + dba[3] + ":3306/" + dba[4] + "?useUnicode=true&characterEncoding=UTF-8";
+            Class.forName("com.mysql.jdbc.Driver");
             con = DriverManager.getConnection(url, dba[1], dba[2]);
             System.out.println("数据库链接成功");
-            //检测所有表的完整
             if (!hasAllUserTables()) {
                 dropAllUserTables();
                 createAlluserTables();
+                System.out.println("3333333333333333333333333333333333");
                 addRole("root");//增加默认root角色 此角色可以查看所有表 此角色的账号是服务端软件的登录账号
+                System.out.println("4----------------------------------");
                 addAccount("admin", "admin");//增加root账号 这就是默认的登录密码
+                System.out.println("4-------------------------------------");
                 addRoleAccount("root", "admin");
             }
             //账号不可用
-            if (!serverlog(logname, logpass)) return false;
+            if (!serverlog(logname, logpass))
+                return false;
         } catch (Exception e) {
-            System.out.println("链接错误");
+            System.out.println("找不到驱动程序类 ，加载驱动失败！");
             return false;
         }
         return true;
     }
 
-    //*************************************
+    //true
     public boolean hasAllUserTables() {
-        String sql = "select count(*) as count from sysobjects where name in ('ROLE','ACCOUNT','ROLEACCOUNT','ROLEPERMISSION','TABLENAME','COLUMNNAME','QUERYCONDITION')";
+        String sql = "show tables  from misaki where Tables_in_misaki in ('ROLE','ACCOUNT','ROLEACCOUNT','ROLEPERMISSION','TABLENAME','COLUMNNAME','QUERYCONDITION')";
         PreparedStatement pre = null;
         ResultSet rs = null;
         try {
             pre = con.prepareStatement(sql);
             rs = pre.executeQuery();
-            if (rs.next() && rs.getInt("count") == 7) {
+            int count = 0;
+            while (rs.next()) {
+                if (rs.getString(1) != null)
+                    count++;
+            }
+            if (count == 7) {
                 return true;
             }
             System.out.println("method -=--=-=---------- hasAllUserTables=" + false);
@@ -88,38 +91,47 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //****************************
+    //true
     public void dropAllUserTables() {
-        String[] userTableName = {"QUERYCONDITION", "COLUMNNAME", "TABLENAME", "ROLEPERMISSION", "ACCOUNT", "ROLEACCOUNT", "ROLE"};
-        String table = "drop table QUERYCONDITION;drop table COLUMNNAME;drop table TABLENAME;drop table ROLEPERMISSION;drop table ACCOUNT;drop table ROLEACCOUNT;drop table ROLE;";
-//        for (int i = 0; i < userTableName.length; i++) {
-//            try {
-//                PreparedStatement ps = con.prepareStatement("drop table " + userTableName[i]);
-//                ps.execute();
-//                ps.close();
-//            } catch (Exception e) {
-//            }//无视删除表时引起的找不到表的异常
-//        }
-        PreparedStatement ps = null;
-        try {
-            ps = con.prepareStatement(table);
-            ps.execute();
-            ps.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
+        String[] userTableName = {"drop table QUERYCONDITION",
+                " drop table COLUMNNAME",
+                "drop table  TABLENAME",
+                "drop table ROLEPERMISSION",
+                "drop table ACCOUNT",
+                "drop table ROLEACCOUNT",
+                " drop table role"};
+        String table = "drop table QUERYCONDITION;" +
+                "drop table COLUMNNAME;" +
+                "drop table TABLENAME;" +
+                "drop table ROLEPERMISSION;" +
+                "drop table ACCOUNT;" +
+                "drop table ROLEACCOUNT;" +
+                "drop table role;";
+        for (String s : userTableName) {
+            PreparedStatement ps = null;
+            try {
+                ps = con.prepareStatement(s);
+                ps.execute();
+                ps.close();
+            } catch (SQLException e) {
+                System.out.println("------------------      dropAllUserTables  is fail   " + s + "    -------------------------");
+            }
         }
+
+
     }
 
 
+    //true
     public void createAlluserTables() {
         String[] createUserTableSql = {
-                " create table role( role_id int not null Primary key  identity(1,1),role_name varchar(30) not null unique)"//角色表存放角色id 自己分配  角色名 角色名不能为空不能重复
-                , "create table account(account_id int  primary key identity(1,1),name varchar(30) not null UNIQUE,password varchar(30) not null)"//账号表 存放账号 id 自己分配 账号名 账号密码 账号名不能为空不能重复 密码不能为空
-                , "create table roleaccount(account_id int,role_id int)"// 角色 账号对应表 存放 角色id 账号id
-                , "create table rolepermission(role_id int ,table_id int not null,column_name varchar(30) not null)"//角色 权限表 角色id 表id 表的列名
-                , "create table tablename(table_id int primary key,adorn_name varchar(30) unique,table_name varchar(30),flag char(1) default 'N')"//表名 表id 数据库分配 翻译名  不能相同  表名 是否可见 默认不可见
-                , "create table columnname(table_id int not null,column_name varchar(30) not null,datatype varchar(106),adorn_name varchar(30),flag char(1) default 'N',no int default 0)"//列名 表id 列名 翻译列名 数据类型 翻译名 是否可见
-                , "create table querycondition(account_id int ,table_id int not null,column_name varchar(30) not null,flag varchar(1),con1 varchar(30),con2 varchar(30),setname varchar(30) not null)"//保存的设置  账号id 表id 列名   是否被选中  查询条件1 查询条件2  设置名
+                " create table role( role_id int not null Primary key  AUTO_INCREMENT,role_name varchar(30) not null unique) ENGINE=MyISAM DEFAULT CHARSET=utf8;"//角色表存放角色id 自己分配  角色名 角色名不能为空不能重复
+                , "create table account(account_id int  primary key AUTO_INCREMENT,name varchar(30) not null UNIQUE,password varchar(30) not null) ENGINE=MyISAM DEFAULT CHARSET=utf8;"//账号表 存放账号 id 自己分配 账号名 账号密码 账号名不能为空不能重复 密码不能为空
+                , "create table roleaccount(account_id int,role_id int) ENGINE=MyISAM DEFAULT CHARSET=utf8;"// 角色 账号对应表 存放 角色id 账号id
+                , "create table rolepermission(role_id int ,table_id int not null,column_name varchar(30) not null) ENGINE=MyISAM DEFAULT CHARSET=utf8;"//角色 权限表 角色id 表id 表的列名
+                , "create table tablename(table_id int primary key AUTO_INCREMENT,adorn_name varchar(30) unique,table_name varchar(30),flag char(1) default 'N') ENGINE=MyISAM DEFAULT CHARSET=utf8;"//表名 表id 数据库分配 翻译名  不能相同  表名 是否可见 默认不可见
+                , "create table columnname(table_id int not null,column_name varchar(30) not null,datatype varchar(106),adorn_name varchar(30),flag char(1) default 'N',no int default 0) ENGINE=MyISAM DEFAULT CHARSET=utf8;"//列名 表id 列名 翻译列名 数据类型 翻译名 是否可见
+                , "create table querycondition(account_id int not null ,table_id int not null,column_name varchar(30) not null,flag varchar(1),con1 varchar(30),con2 varchar(30),setname varchar(30) not null) ENGINE=MyISAM DEFAULT CHARSET=utf8;"//保存的设置  账号id 表id 列名   是否被选中  查询条件1 查询条件2  设置名
         };
         for (int i = 0; i < createUserTableSql.length; i++) {
             Statement stmt = null;
@@ -134,8 +146,8 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //******************************************
-    //添加角色 返回角色id 如果存在角色返回-1 其他错误返回-2
+    //true
+//添加角色 返回角色id 如果存在角色返回-1 其他错误返回-2
     public int addRole(String rolename) {
         System.out.println("--------------addRole-----------rolename=" + rolename);
         try {
@@ -153,8 +165,9 @@ public class DBSqlServer implements Database {
         return getRoleid(rolename);
     }
 
-    //*********************************
+    //true
     public int addAccount(String name, String pass) {
+        System.out.println("--------------addAccount-----------name=" + name + "  pass=" + pass);
         try {
             if (hasAccount(name)) return -1;
             PreparedStatement pre = null;
@@ -171,8 +184,9 @@ public class DBSqlServer implements Database {
         return getAccountid(name);
     }
 
-    //*************************************
+    //    true
     public boolean hasAccount(String account_name) {
+        System.out.println("--------------addAccount-----------account_name=" + account_name);
         try {
             PreparedStatement pre = null;
             pre = con.prepareStatement("select count(*) from account where name=?");
@@ -189,13 +203,25 @@ public class DBSqlServer implements Database {
         return true;
     }
 
-    public void addRoleAccount(String role, String account) throws SQLException {
+    //true
+    public void addRoleAccount(String role, String account) {
+        System.out.println("--------------addRoleAccount-----------role=" + role + "role=" + role);
         int role_id = getRoleid(role);
         int account_id = getAccountid(account);
-        insertRoleAccount(role_id, account_id);
+        PreparedStatement pre = null;
+        try {
+            pre = con.prepareStatement("insert into roleaccount values(?,?)");
+            pre.setInt(1, account_id);
+            pre.setInt(2, role_id);
+            pre.execute();
+            pre.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
     }
 
-    //**********************************************
+    //true
     public int getRoleid(String role_name) {
         try {
             PreparedStatement pre = null;
@@ -206,6 +232,7 @@ public class DBSqlServer implements Database {
             if (result.next()) {
                 i = result.getInt(1);
             }
+            System.out.println("--------------  getRoleid   -----------role_name=" + role_name);
             result.close();
             pre.close();
             return i;
@@ -215,7 +242,7 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //***********************
+    //true
     public int getAccountid(String name) {
         try {
             PreparedStatement pre = null;
@@ -226,6 +253,7 @@ public class DBSqlServer implements Database {
             if (result.next()) {
                 i = result.getInt(1);
             }
+            System.out.println("--------------  getAccountid   -----------name=" + name);
             result.close();
             pre.close();
             return i;
@@ -236,17 +264,10 @@ public class DBSqlServer implements Database {
         return -1;
     }
 
-    //*******************************
+    //----------------------------------
     public void insertRoleAccount(int role_id, int account_id) {
-        try {
-            PreparedStatement pre = con.prepareStatement("insert into roleaccount values(?,?)");
-            pre.setInt(1, account_id);
-            pre.setInt(2, role_id);
-            pre.execute();
-            pre.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+
+
     }
 
     /**
@@ -255,31 +276,32 @@ public class DBSqlServer implements Database {
      * @param account_id
      * @return
      */
-    //**************************
+//true
     public boolean deleteAccount(int account_id) {
         try {
             PreparedStatement pre = null;
-            pre = con.prepareStatement("delete account where account_id=?");
+            pre = con.prepareStatement("delete from account where account_id=?");
             pre.setInt(1, account_id);
             pre.execute();
             pre.close();
-            con.prepareStatement("delete roleaccount where account_id=" + account_id).execute();
-            con.prepareStatement("delete querycondition where account_id=" + account_id).execute();
+            System.out.println("--------------  deleteAccount   -----------account_id=" + account_id);
+            con.prepareStatement("delete from roleaccount where account_id=" + account_id).execute();
+            con.prepareStatement("delete from querycondition where account_id=" + account_id).execute();
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return true;
     }
 
-    //*********************************
+    //rue
     public boolean serverlog(String logname, String logpass) {
         try {
             PreparedStatement pre = null;
             pre = con.prepareStatement("select count(*) from account a,roleaccount ra,role r where a.name=? and a.password=? and a.account_id=ra.account_id and ra.role_id=r.role_id  and r.role_name='root'");
-
             pre.setString(1, logname);
             pre.setString(2, logpass);
             ResultSet result = pre.executeQuery();
+            System.out.println("--------------  serverlog   -----------logname=" + logname + "   logpass=" + logpass);
             if (result.next() && result.getInt(1) == 1) {
                 result.close();
                 pre.close();
@@ -294,36 +316,38 @@ public class DBSqlServer implements Database {
     }
 
 
-    //**********************************
+    //true
     public void transTabletoView() {
         PreparedStatement pre;
         try {
-            pre = con.prepareStatement(
-                    "select name from sysobjects where xtype='U' and name not in ('ROLE','ACCOUNT','ROLEACCOUNT','ROLEPERMISSION','TABLENAME','COLUMNNAME','QUERYCONDITION') order by name");
-            ResultSet result = pre.executeQuery();
-            while (result.next()) {
-                String name = result.getString(1);
-                if (!hasview(name + "_view")) {
+            pre = con.prepareStatement("show  tables   where tables_in_misaki not in('ROLE','ACCOUNT','ROLEACCOUNT','ROLEPERMISSION','TABLENAME','COLUMNNAME','QUERYCONDITION')");
+            ResultSet rs = pre.executeQuery();
+            while (rs.next()) {
+                String name = rs.getString(1);
+                if (!name.contains("_view") && hasview(name + "_view")) {
+                    System.out.println("--------------  transTabletoView   ----------  tablename=" + name);
                     createview(name);
                 }
             }
-            result.close();
+            System.out.println("--------------  transTabletoView   ---------- ");
+            rs.close();
             pre.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    //**********************
+    //true
     public boolean hasview(String name) {
         try {
             PreparedStatement pre = null;
-            pre = con.prepareStatement("select count(*) from sysobjects where  name=?");
+            pre = con.prepareStatement("show tables where tables_in_misaki =?");
             pre.setString(1, name);
             ResultSet result = pre.executeQuery();
-            if (result.next() && result.getInt(1) == 0) {
+            if (result.next()) {
                 result.close();
                 pre.close();
+                System.out.println("--------------   hasview   ----------  name=" + name);
                 return false;
             }
             result.close();
@@ -335,7 +359,7 @@ public class DBSqlServer implements Database {
         return true;
     }
 
-    //*****************************
+    //true
     public void createview(String name) {
         PreparedStatement pre = null;
         dropView(name);
@@ -343,18 +367,20 @@ public class DBSqlServer implements Database {
             pre = con.prepareStatement("create view " + name + "_view as  select * from " + name);
             pre.execute();
             pre.close();
+            System.out.println("-------------------  createview  -------------    name=" + name);
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    //*****************************
+    //true
     public void dropView(String name) {
         PreparedStatement pre = null;
         try {
-            pre = con.prepareStatement("drop view  " + name + "_view");
+            pre = con.prepareStatement("drop view " + name);
             pre.execute();
             pre.close();
+            System.out.println("-------------------  dropView  -------------    name=" + name);
         } catch (SQLException e) {
         }
     }
@@ -362,17 +388,22 @@ public class DBSqlServer implements Database {
     /**
      * 读取视图方法 只读取视图，若无视图则创建视图
      */
+    //true
     public ArrayList<String> getUnadornViewList() {
         ArrayList<String> tablename = new ArrayList<>();
+        String sql = "select table_name from information_schema.TABLES b  where  table_type='view'  and table_schema=?";
         try {
             transTabletoView();
-            PreparedStatement pre = con.prepareStatement("select name from sysobjects where xtype='V'  order by name");
+            PreparedStatement pre = con.prepareStatement(sql);
+            pre.setString(1, dbName);
+            System.out.println(sql);
             ResultSet result = pre.executeQuery();
             while (result.next()) {
                 tablename.add(result.getString(1));
             }
             result.close();
             pre.close();
+            System.out.println("-----------------       getUnadornViewList       -----------------------");
             return tablename;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -381,13 +412,6 @@ public class DBSqlServer implements Database {
         }
     }
 
-    public static void main(String[] args) throws SQLException {
-        DBSqlServer db = new DBSqlServer();
-        for (String val : db.getColumnList("Customers_view")) {
-            System.out.println(val);
-        }
-
-    }
 
     /**
      * 得到列
@@ -395,12 +419,12 @@ public class DBSqlServer implements Database {
      * @param tablename
      * @return
      */
-    //*********************************
+//true
     public ArrayList<String> getColumnList(String tablename) {
         ArrayList<String> list = new ArrayList<>();
         try {
             PreparedStatement pre = null;
-            pre = con.prepareStatement("select name from sys.columns where object_id=object_id(?)");
+            pre = con.prepareStatement("SELECT  COLUMN_NAME FROM information_schema.COLUMNS  where table_name=?");
             pre.setString(1, tablename);
             ResultSet result = pre.executeQuery();
             while (result.next()) {
@@ -416,8 +440,8 @@ public class DBSqlServer implements Database {
     }
 
     // 更新表名 首先看在tablename中是否存在 不存在插入 存在更新
-    // 有时候直接写sql语句感觉更方便点
-//*********************************
+// 有时候直接写sql语句感觉更方便点
+//true
     public boolean hasTable(String name) {
         PreparedStatement pre = null;
         boolean flag = false;
@@ -434,7 +458,7 @@ public class DBSqlServer implements Database {
         return flag;
     }
 
-    //*********************************
+    //true
     public boolean hasColumn(int table_id, String column_name) {
         PreparedStatement pre = null;
         boolean flag = false;
@@ -452,8 +476,9 @@ public class DBSqlServer implements Database {
         return flag;
     }
 
-    //*******************************************
+    //true
     public void setTableName(String name, String chinese) {
+
         String updateTableName = "update tablename set adorn_name= ?,flag=? where table_name= ?";
         String haschiese = chinese.equals("") ? "N" : "Y";
         boolean isExit = hasTable(name);
@@ -471,7 +496,7 @@ public class DBSqlServer implements Database {
             }
         } else {
             try {
-                pre = con.prepareStatement("insert into tablename(table_id,table_name) select id,name from sysobjects where name=?");
+                pre = con.prepareStatement("insert into tablename(table_name) VALUES (?)");
                 pre.setString(1, name);
                 pre.execute();
                 pre = con.prepareStatement(updateTableName);
@@ -487,7 +512,7 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //**************************
+    //true
     public String getAdornTableName(String onselecttable) {
         String str = "";
         try {
@@ -512,7 +537,7 @@ public class DBSqlServer implements Database {
      * 更新columnname 到底是使用column_id 还是直接用列名 选择了用id 列名虽然不多但 毕竟有三张表使用 然而并没有卵用
      * 还是改成列名
      */
-    // 根据表名列名插入tableid columnid datatype
+// 根据表名列名插入tableid columnid datatype
 
     /**
      * @param tablename
@@ -522,6 +547,7 @@ public class DBSqlServer implements Database {
      * @param chinese
      * @param xh
      */
+    //true
     public void insertColname(String tablename, int table_id,
                               String column_name, String flag, String chinese, int xh) {
 
@@ -546,22 +572,16 @@ public class DBSqlServer implements Database {
     }
 
     /**
-     * 可能需要处理
-     *
      * @param tablename
      * @param column_name
      * @return
      */
+    //true
     public String getDataType(String tablename, String column_name) {
-        String sql = " SELECT  d.xtype,t.name FROM sysindexes a \n" +
-                " INNER JOIN sysindexkeys b ON a.id = b.id AND a.indid = b.indid \n" +
-                " INNER JOIN  syscolumns d ON b.id = d.id AND b.colid = d.colid \n" +
-                " INNER JOIN systypes t on d.xtype= t.xtype and d.xusertype = t.xusertype\n" +
-                " INNER JOIN  sysobjects c ON a.id = c.id  where c.name='role' and d.name=''";
-        String getDataType = "select a.xtype FROM dbo.syscolumns a LEFT OUTER JOIN    dbo.systypes b ON a.xtype = b.xusertype  where b.name=? and a.name=?";
         String str = "";
         try {
             PreparedStatement pre = null;
+            String getDataType = "SELECT data_type FROM information_schema.COLUMNS  where table_name=? AND  COLUMN_NAME=?";
             pre = con.prepareStatement(getDataType);
             pre.setString(1, tablename);
             pre.setString(2, column_name);
@@ -580,7 +600,7 @@ public class DBSqlServer implements Database {
 
     }
 
-    //***********************
+    //true
     public void updateColname(int table_id, String column_name, String flag,
                               String chinese, int xh) {
         PreparedStatement pre = null;
@@ -598,20 +618,19 @@ public class DBSqlServer implements Database {
         }
     }
 
-    // 插入columnname
-    // 首先 获取table_id
-    // 检测是否之前已经插入列名
-    // 存在 直接插入
-    // 不存在先插入
+// 插入columnname
+// 首先 获取table_id
+// 检测是否之前已经插入列名
+// 存在 直接插入
+// 不存在先插入
 
-    //************************
+    //true
     public void setColname(String tablename, String colName, String flag,
                            String chinese, int xh) {
-
         int table_id = 0;
         PreparedStatement pre = null;
         try {
-            pre = con.prepareStatement("select o.id from sysobjects  o where o.name=? ");
+            pre = con.prepareStatement("select table_id from tablename where table_name=? ");
             pre.setString(1, tablename);
             ResultSet result = pre.executeQuery();
             if (result.next()) {
@@ -634,7 +653,7 @@ public class DBSqlServer implements Database {
 
     }
 
-    //**************************************
+    //true
     public ArrayList<String> getRecord(int id, String colname) {
         ArrayList<String> set = new ArrayList<>();
         try {
@@ -658,7 +677,7 @@ public class DBSqlServer implements Database {
         return set;
     }
 
-    //*************************************************
+    //true
     public ArrayList<String> getAdornTablenameList() {
         ArrayList<String> list = new ArrayList<String>();
         try {
@@ -677,11 +696,10 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //****************************
-    // 注意到有一些方法的结构类似 ->使用sql 传出一维的list 是否可以将其抽象为一个方法
+    //true
+// 注意到有一些方法的结构类似 ->使用sql 传出一维的list 是否可以将其抽象为一个方法
     public ArrayList<String[]> getRoleList(int type) {
         String getRoleList = "select role_id,role_name from role";
-
         ArrayList<String[]> list = new ArrayList<String[]>();
         try {
             String s;
@@ -709,7 +727,7 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //*********************
+    //true
     public boolean hasRole(String rolename) {
         try {
             PreparedStatement pre = null;
@@ -729,11 +747,11 @@ public class DBSqlServer implements Database {
         return true;
     }
 
-    //****************************
+    //true
     public void deleteRole(String rolename) {
         try {
             PreparedStatement pre = null;
-            pre = con.prepareStatement("delete role where role_name=?");
+            pre = con.prepareStatement("delete from  role where role_name=?");
             pre.setString(1, rolename);
             pre.execute();
             pre.close();
@@ -748,12 +766,12 @@ public class DBSqlServer implements Database {
      *
      * @param role_id
      */
-    //*********************************
+//true
     public void deleteRole(int role_id) {
         PreparedStatement pre1;
         PreparedStatement pre2;
         try {
-            pre1 = con.prepareStatement("delete role where role_id= " + role_id);
+            pre1 = con.prepareStatement("delete FROM role where role_id= " + role_id);
             pre1.execute();
             pre1.close();
             pre2 = con.prepareStatement("update roleaccount set role_id=-1 where role_id= " + role_id);
@@ -764,7 +782,7 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //***************************
+    //true
     public int updateRole(int role_id, String name) {
         PreparedStatement pre = null;
         try {
@@ -775,7 +793,8 @@ public class DBSqlServer implements Database {
             e.printStackTrace();
         }
         return 1;
-    }//*************************
+    }
+    //true
 
     public ArrayList<String> getAdornColumnList(String tablename) {
         ArrayList<String> list = new ArrayList<String>();
@@ -797,7 +816,7 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //**************************************************
+    //true
     public void addRolePermission(int role_id, int table_id, ArrayList<String> list) {
         PreparedStatement pre = null;
         try {
@@ -815,7 +834,7 @@ public class DBSqlServer implements Database {
 
     }
 
-    //******************************************
+    //true
     public int getTableid(String table_name) {
         PreparedStatement pre = null;
         int i = -1;
@@ -834,11 +853,11 @@ public class DBSqlServer implements Database {
         return i;
     }
 
-    //*************************************
+    //true
     public void deleteRolePermission(int role_id, int table_id) {
         PreparedStatement pre = null;
         try {
-            pre = con.prepareStatement("delete rolepermission where role_id =? and  table_id=?");
+            pre = con.prepareStatement("delete from  rolepermission where role_id =? and  table_id=?");
             pre.setInt(1, role_id);
             pre.setInt(2, table_id);
             pre.execute();
@@ -848,7 +867,7 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //********************************
+    //    true
     public boolean hasRolePermission(int role_id, int table_id, String column) {
         String hasRolePermission = "select count(*) from rolepermission r where r.role_id=? and r.table_id=? and r.column_name in (select t.column_name from columnname t where t.table_id=? and t.adorn_name=?)";
         PreparedStatement pre = null;
@@ -875,13 +894,14 @@ public class DBSqlServer implements Database {
      * @param role
      * @param text
      */
+    //false
     public void deleteaccount(String role, String text) {
 //        String deleAccount = "delete from account  where account_id=?";
 //        PreparedStatement pre = null;
 //        try {
 //            pre = con.prepareStatement(deleAccount);
 //            pre.setString(1, role);
-//         pre.setString(2, text);
+//            pre.setString(2, text);
 //            pre.execute();
 //            pre.close();
 //        } catch (SQLException e) {
@@ -889,8 +909,7 @@ public class DBSqlServer implements Database {
 //        }
     }
 
-
-    //*******************************
+    //true
     public ArrayList<String[]> getAllAccount() {
         ArrayList<String[]> list = new ArrayList<>();
         String s;
@@ -914,7 +933,7 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //**********************
+    //true
     public void updateAccount(int account_id, String name, String pass) {
         try {
             PreparedStatement pre = null;
@@ -936,6 +955,7 @@ public class DBSqlServer implements Database {
      * @param role_id
      * @return
      */
+    //true
     public HashMap<String, String> getAccountByRole(int role_id) {
         String getAccountByRoleid = "select a.account_id ,a.name,a.password  from account a where a.account_id in (select account_id from roleaccount where role_id =?)";
         HashMap<String, String> list = new HashMap<>();
@@ -961,11 +981,17 @@ public class DBSqlServer implements Database {
 
     }
 
-    //****************************
+    /**
+     * 可能需要处理
+     *
+     * @param onselecttable
+     * @return
+     */
+    //true
     public int getidByunadornname(String onselecttable) {
         try {
             PreparedStatement pre = null;
-            pre = con.prepareStatement("select  id from sysobjects where  name=? ");
+            pre = con.prepareStatement("select  table_id from tablename where  table_name=? ");
             pre.setString(1, onselecttable);
             ResultSet result = pre.executeQuery();
             int i = -1;
@@ -981,11 +1007,11 @@ public class DBSqlServer implements Database {
         }
     }
 
-    //**********************
+    //true
     public void deleteRoleAccount(int role_id) {
         try {
             PreparedStatement pre = null;
-            pre = con.prepareStatement("delete roleaccount where role_id=?");
+            pre = con.prepareStatement("delete from roleaccount where role_id=?");
             pre.setInt(1, role_id);
             pre.execute();
             pre.close();
@@ -994,7 +1020,7 @@ public class DBSqlServer implements Database {
         }
     }
 
-
+    //true
     public void addRoleAccount(int role_id, int accountId) {
         try {
             PreparedStatement pre = null;
